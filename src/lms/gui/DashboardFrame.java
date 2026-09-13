@@ -28,22 +28,46 @@ public class DashboardFrame extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jButton1 = new javax.swing.JButton();
-        jButton2 = new javax.swing.JButton();
+        BookListButton = new javax.swing.JButton();
+        AddEditBooksButton = new javax.swing.JButton();
+        MemberListButton = new javax.swing.JButton();
+        AddEditMemberButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setTitle("Library Management System");
+        setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+        setResizable(false);
 
-        jButton1.setText("Book List");
-        jButton1.addMouseListener(new java.awt.event.MouseAdapter() {
+        BookListButton.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
+        BookListButton.setText("Book List");
+        BookListButton.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                jButton1MouseClicked(evt);
+                BookListButtonMouseClicked(evt);
             }
         });
 
-        jButton2.setText("Add / Edit Books");
-        jButton2.addMouseListener(new java.awt.event.MouseAdapter() {
+        AddEditBooksButton.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
+        AddEditBooksButton.setText("Add / Edit Books");
+        AddEditBooksButton.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                jButton2MouseClicked(evt);
+                AddEditBooksButtonMouseClicked(evt);
+            }
+        });
+
+        MemberListButton.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
+        MemberListButton.setText("Member List");
+        MemberListButton.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                MemberListButtonMouseClicked(evt);
+            }
+        });
+        MemberListButton.addActionListener(this::MemberListButtonActionPerformed);
+
+        AddEditMemberButton.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
+        AddEditMemberButton.setText("Add / Edit Members");
+        AddEditMemberButton.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                AddEditMemberButtonMouseClicked(evt);
             }
         });
 
@@ -52,34 +76,59 @@ public class DashboardFrame extends javax.swing.JFrame {
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addGap(174, 174, 174)
+                .addGap(151, 151, 151)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
-                    .addComponent(jButton1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jButton2))
+                    .addComponent(BookListButton, javax.swing.GroupLayout.PREFERRED_SIZE, 275, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(AddEditBooksButton, javax.swing.GroupLayout.PREFERRED_SIZE, 136, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(MemberListButton, javax.swing.GroupLayout.PREFERRED_SIZE, 275, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(AddEditMemberButton))
                 .addGap(151, 151, 151))
         );
+
+        layout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {AddEditBooksButton, AddEditMemberButton, BookListButton, MemberListButton});
+
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addGap(105, 105, 105)
-                .addComponent(jButton1)
+                .addComponent(BookListButton)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jButton2)
-                .addContainerGap(143, Short.MAX_VALUE))
+                .addComponent(AddEditBooksButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(MemberListButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(AddEditMemberButton)
+                .addContainerGap(105, Short.MAX_VALUE))
         );
+
+        getAccessibleContext().setAccessibleDescription("");
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void jButton1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton1MouseClicked
+    private void BookListButtonMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_BookListButtonMouseClicked
         new BookListFrame().setVisible(true);
         this.dispose();
-    }//GEN-LAST:event_jButton1MouseClicked
+    }//GEN-LAST:event_BookListButtonMouseClicked
 
-    private void jButton2MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton2MouseClicked
+    private void AddEditBooksButtonMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_AddEditBooksButtonMouseClicked
         new AddEditBookFrame().setVisible(true);
         this.dispose();
-    }//GEN-LAST:event_jButton2MouseClicked
+    }//GEN-LAST:event_AddEditBooksButtonMouseClicked
+
+    private void MemberListButtonMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_MemberListButtonMouseClicked
+        new MemberListFrame().setVisible(true);
+        this.dispose();
+    }//GEN-LAST:event_MemberListButtonMouseClicked
+
+    private void AddEditMemberButtonMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_AddEditMemberButtonMouseClicked
+        new AddEditBookFrame().setVisible(true);
+        this.dispose();
+    }//GEN-LAST:event_AddEditMemberButtonMouseClicked
+
+    private void MemberListButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_MemberListButtonActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_MemberListButtonActionPerformed
 
     /**
      * @param args the command line arguments
@@ -107,7 +156,9 @@ public class DashboardFrame extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton jButton1;
-    private javax.swing.JButton jButton2;
+    private javax.swing.JButton AddEditBooksButton;
+    private javax.swing.JButton AddEditMemberButton;
+    private javax.swing.JButton BookListButton;
+    private javax.swing.JButton MemberListButton;
     // End of variables declaration//GEN-END:variables
 }
