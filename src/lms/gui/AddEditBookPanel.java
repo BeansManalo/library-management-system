@@ -24,10 +24,8 @@ public class AddEditBookPanel extends JPanel {
         setPreferredSize(MainFrame.NHD_SIZE);
 
         lblAddAndEditBooks = new JLabel("ADD AND EDIT BOOKS");
-        lblAddAndEditBooks.setBounds(267, 163, 108, 14);
 
         JButton Return = new JButton("BACK");
-        Return.setBounds(284, 250, 75, 23);
         Return.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -38,9 +36,30 @@ public class AddEditBookPanel extends JPanel {
             public void actionPerformed(ActionEvent e) {
             }
         });
-        setLayout(null);
-        add(lblAddAndEditBooks);
-        add(Return);
+
+        GroupLayout gl_this = new GroupLayout(this);
+        gl_this.setHorizontalGroup(
+        	gl_this.createParallelGroup(Alignment.LEADING)
+        		.addGroup(gl_this.createSequentialGroup()
+        			.addContainerGap(272, Short.MAX_VALUE)
+        			.addGroup(gl_this.createParallelGroup(Alignment.LEADING)
+        				.addGroup(Alignment.TRAILING, gl_this.createSequentialGroup()
+        					.addComponent(Return)
+        					.addGap(284))
+        				.addGroup(Alignment.TRAILING, gl_this.createSequentialGroup()
+        					.addComponent(lblAddAndEditBooks)
+        					.addGap(260))))
+        );
+        gl_this.setVerticalGroup(
+        	gl_this.createParallelGroup(Alignment.LEADING)
+        		.addGroup(Alignment.TRAILING, gl_this.createSequentialGroup()
+        			.addContainerGap(165, Short.MAX_VALUE)
+        			.addComponent(lblAddAndEditBooks)
+        			.addGap(60)
+        			.addComponent(Return)
+        			.addGap(98))
+        );
+        setLayout(gl_this);
     }
 
     /**

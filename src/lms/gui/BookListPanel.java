@@ -8,12 +8,19 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.LayoutStyle.ComponentPlacement;
+import javax.swing.JTable;
+import javax.swing.border.LineBorder;
+import java.awt.Color;
+import javax.swing.table.DefaultTableModel;
+import java.awt.Font;
+import javax.swing.SwingConstants;
 
 @SuppressWarnings("serial")
 public class BookListPanel extends JPanel {
 
     private MainFrame mainFrame;
     private JLabel lblListOfBooks;
+    private JTable table;
 
     /**
      * Create the panel.
@@ -22,10 +29,12 @@ public class BookListPanel extends JPanel {
         setPreferredSize(MainFrame.NHD_SIZE);
 
         lblListOfBooks = new JLabel("LIST OF BOOKS");
-        lblListOfBooks.setBounds(283, 172, 75, 14);
+        lblListOfBooks.setHorizontalAlignment(SwingConstants.CENTER);
+        lblListOfBooks.setFont(new Font("Tahoma", Font.BOLD, 11));
+        lblListOfBooks.setBounds(281, 44, 93, 14);
 
         JButton Return = new JButton("BACK");
-        Return.setBounds(294, 257, 59, 23);
+        Return.setBounds(299, 279, 59, 23);
         Return.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -35,6 +44,28 @@ public class BookListPanel extends JPanel {
         setLayout(null);
         add(lblListOfBooks);
         add(Return);
+        
+        table = new JTable();
+        table.setModel(new DefaultTableModel(
+        	new Object[][] {
+        		{null, null, null, null, null},
+        		{null, null, null, null, null},
+        		{null, null, null, null, null},
+        		{null, null, null, null, null},
+        		{null, null, null, null, null},
+        		{null, null, null, null, null},
+        		{null, null, null, null, null},
+        		{null, null, null, null, null},
+        		{null, null, null, null, null},
+        		{null, null, null, null, null},
+        	},
+        	new String[] {
+        		"New column", "New column", "New column", "New column", "New column"
+        	}
+        ));
+        table.setBorder(new LineBorder(new Color(0, 0, 0)));
+        table.setBounds(142, 69, 375, 160);
+        add(table);
     }
 
     /**
