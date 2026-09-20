@@ -41,7 +41,12 @@ public class DashboardPanel extends JPanel {
         btnAddEditBooks.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                mainFrame.showCard(MainFrame.CARD_ADD_EDIT_BOOK);
+                // Go through showBookForm(null) rather than showCard()
+                // directly, so this shortcut always opens a blank "Add"
+                // form instead of possibly reusing whatever book was
+                // last being edited (the Add/Edit panel is reused, not
+                // recreated, between visits).
+                mainFrame.showBookForm(null);
             }
         });
 
@@ -65,7 +70,8 @@ public class DashboardPanel extends JPanel {
         btnAddEditMembers.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                mainFrame.showCard(MainFrame.CARD_ADD_EDIT_MEMBER);
+                // Same reasoning as btnAddEditBooks above: always start blank.
+                mainFrame.showMemberForm(null);
             }
         });
 
