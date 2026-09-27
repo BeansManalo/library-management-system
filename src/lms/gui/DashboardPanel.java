@@ -1,106 +1,82 @@
 package lms.gui;
 
-import java.awt.Font;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.BorderLayout;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
-import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.LayoutStyle.ComponentPlacement;
-import javax.swing.SwingConstants;
 
 @SuppressWarnings("serial")
 public class DashboardPanel extends JPanel {
 
     private MainFrame mainFrame;
-    private JButton btnBookList;
-    private JButton btnAddEditBooks;
-    private JButton btnMemberList;
-    private JButton btnAddEditMembers;
+    private PillButton btnBookList;
+    private PillButton btnAddEditBooks;
+    private PillButton btnMemberList;
+    private PillButton btnAddEditMembers;
 
     /**
      * Create the panel.
      */
     public DashboardPanel() {
         setPreferredSize(MainFrame.NHD_SIZE);
+        setBackground(Theme.APP_BG);
+        setLayout(new BorderLayout());
 
-        btnBookList = new JButton("Book List");
-        btnBookList.setFont(new Font("Arial", Font.BOLD, 12));
-        btnBookList.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                mainFrame.showCard(MainFrame.CARD_BOOK_LIST);
-            }
-        });
+        JLabel banner = Theme.banner("LIBRARY MANAGEMENT SYSTEM");
+        banner.setPreferredSize(new java.awt.Dimension(640, 34));
+        add(banner, BorderLayout.NORTH);
 
-        btnAddEditBooks = new JButton("Add / Edit Books");
-        btnAddEditBooks.setFont(new Font("Arial", Font.BOLD, 12));
-        btnAddEditBooks.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                // Go through showBookForm(null) rather than showCard()
-                // directly, so this shortcut always opens a blank "Add"
-                // form instead of possibly reusing whatever book was
-                // last being edited (the Add/Edit panel is reused, not
-                // recreated, between visits).
-                mainFrame.showBookForm(null);
-            }
-        });
+        JPanel buttonArea = new JPanel();
+        buttonArea.setBackground(Theme.APP_BG);
+        add(buttonArea, BorderLayout.CENTER);
 
-        btnMemberList = new JButton("Member List");
-        btnMemberList.setFont(new Font("Arial", Font.BOLD, 12));
-        btnMemberList.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                mainFrame.showCard(MainFrame.CARD_MEMBER_LIST);
-            }
-        });
-        btnMemberList.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // TODO add your handling code here:
-            }
-        });
+        btnBookList = new PillButton("Book List");
+        btnBookList.setIcon(RowIcons.book(18, java.awt.Color.WHITE), 10);
+        btnBookList.addActionListener(e -> mainFrame.showBookList());
 
-        btnAddEditMembers = new JButton("Add / Edit Members");
-        btnAddEditMembers.setFont(new Font("Arial", Font.BOLD, 12));
-        btnAddEditMembers.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                // Same reasoning as btnAddEditBooks above: always start blank.
-                mainFrame.showMemberForm(null);
-            }
-        });
+        btnAddEditBooks = new PillButton("Add / Edit Books");
+        btnAddEditBooks.setIcon(RowIcons.book(18, java.awt.Color.WHITE), 10);
+        btnAddEditBooks.addActionListener(e -> mainFrame.showBookManage());
+        // Opens the same list screen as "Book List", but in its
+        // management role: Add New / Delete are visible, and
+        // double-clicking a row opens it for editing instead of just
+        // viewing it -- see BookListPanel.setManageMode().
 
-        GroupLayout gl_this = new GroupLayout(this);
+        btnMemberList = new PillButton("Member List");
+        btnMemberList.setIcon(RowIcons.person(18, java.awt.Color.WHITE), 10);
+        btnMemberList.addActionListener(e -> mainFrame.showMemberList());
+
+        btnAddEditMembers = new PillButton("Add / Edit Members");
+        btnAddEditMembers.setIcon(RowIcons.person(18, java.awt.Color.WHITE), 10);
+        btnAddEditMembers.addActionListener(e -> mainFrame.showMemberManage());
+        // Same reasoning as btnAddEditBooks above.
+
+        GroupLayout gl_this = new GroupLayout(buttonArea);
         gl_this.setHorizontalGroup(
             gl_this.createSequentialGroup()
                 .addGap(0, 0, Short.MAX_VALUE)
                 .addGroup(gl_this.createParallelGroup(Alignment.CENTER)
                     .addComponent(btnBookList, GroupLayout.PREFERRED_SIZE, 275, GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnAddEditBooks, GroupLayout.PREFERRED_SIZE, 136, GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnAddEditBooks, GroupLayout.PREFERRED_SIZE, 275, GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnMemberList, GroupLayout.PREFERRED_SIZE, 275, GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnAddEditMembers))
+                    .addComponent(btnAddEditMembers, GroupLayout.PREFERRED_SIZE, 275, GroupLayout.PREFERRED_SIZE))
                 .addGap(0, 0, Short.MAX_VALUE)
         );
-        gl_this.linkSize(SwingConstants.HORIZONTAL,
-            btnAddEditBooks, btnAddEditMembers, btnBookList, btnMemberList);
         gl_this.setVerticalGroup(
             gl_this.createSequentialGroup()
                 .addGap(0, 0, Short.MAX_VALUE)
-                .addComponent(btnBookList)
+                .addComponent(btnBookList, GroupLayout.PREFERRED_SIZE, 38, GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(ComponentPlacement.RELATED)
-                .addComponent(btnAddEditBooks)
+                .addComponent(btnAddEditBooks, GroupLayout.PREFERRED_SIZE, 38, GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(ComponentPlacement.UNRELATED)
+                .addComponent(btnMemberList, GroupLayout.PREFERRED_SIZE, 38, GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(ComponentPlacement.RELATED)
-                .addComponent(btnMemberList)
-                .addPreferredGap(ComponentPlacement.RELATED)
-                .addComponent(btnAddEditMembers)
+                .addComponent(btnAddEditMembers, GroupLayout.PREFERRED_SIZE, 38, GroupLayout.PREFERRED_SIZE)
                 .addGap(0, 0, Short.MAX_VALUE)
         );
-        setLayout(gl_this);
+        buttonArea.setLayout(gl_this);
     }
 
     /**

@@ -12,6 +12,10 @@ public class Member {
     private String contactNumber;
     private String email;
     private String address;
+    private String joinDate;
+    private String endDate;
+    private int booksBorrowed;
+    private int penalties;
 
     public String getMemberId() {
         return memberId;
@@ -51,5 +55,37 @@ public class Member {
 
     public void setAddress(String address) {
         this.address = address;
+    }
+
+    public String getJoinDate() {
+        return joinDate;
+    }
+
+    public void setJoinDate(String joinDate) {
+        this.joinDate = joinDate;
+    }
+
+    public String getEndDate() {
+        return endDate;
+    }
+
+    public void setEndDate(String endDate) {
+        this.endDate = endDate;
+    }
+
+    public int getBooksBorrowed() {
+        return booksBorrowed;
+    }
+
+    public void setBooksBorrowed(int booksBorrowed) {
+        this.booksBorrowed = booksBorrowed;
+    }
+
+    public int getPenalties() {
+        return penalties;
+    }
+
+    public void setPenalties(int penalties) {
+        this.penalties = penalties;
     }
 }

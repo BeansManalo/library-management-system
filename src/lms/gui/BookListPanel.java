@@ -1,164 +1,146 @@
 package lms.gui;
 
 import java.awt.Color;
-import java.awt.Font;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JTable;
+import javax.swing.JScrollPane;
 import javax.swing.JTextField;
-import javax.swing.SwingConstants;
+import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.table.DefaultTableModel;
 import lms.core.Book;
 
 @SuppressWarnings("serial")
 public class BookListPanel extends JPanel {
 
     private MainFrame mainFrame;
-    private JLabel lblListOfBooks;
-    private JTable table;
+    private final ProportionalLayout layout = new ProportionalLayout();
+    private JLabel banner;
     private JTextField txtSearch;
-    private DefaultTableModel tableModel;
+    private CardListPanel cardListPanel;
+    private PillButton btnAddNew;
+    private PillButton btnDelete;
 
-    // The rows currently shown in the table (i.e. after the search filter
-    // is applied), in the same order as the table. Row index in the table
-    // maps 1:1 to index in this list, so a click on row N always refers
-    // to displayedBooks.get(N) -- no ID lookup needed.
+    // True when this screen is playing the "Add / Edit Books" role (Add
+    // New + Delete visible, double-click opens the editable form)
+    // instead of the plain read-only "Book List" role (double-click
+    // opens the read-only Book Details viewer instead, nothing here can
+    // change a book). Both roles share this one screen/card -- see
+    // MainFrame.showBookList() / showBookManage() -- the same way
+    // AddEditBookPanel already reuses one screen for both Add and Edit.
+    private boolean manageMode;
+
+    // The rows currently shown (i.e. after the search filter is applied),
+    // in the same order as the card list. cardPanels is the on-screen
+    // component for each entry in displayedBooks, kept in step with it so
+    // a click can flip one card's selected look without rebuilding the
+    // whole list.
     private List<Book> displayedBooks = new ArrayList<>();
+    private List<BookCardPanel> cardPanels = new ArrayList<>();
+    private int selectedIndex = -1;
 
     /**
      * Create the panel.
      */
     public BookListPanel() {
         setPreferredSize(MainFrame.NHD_SIZE);
-        setLayout(null);
+        setBackground(Theme.APP_BG);
+        setLayout(layout);
 
-        lblListOfBooks = new JLabel("LIST OF BOOKS");
-        lblListOfBooks.setHorizontalAlignment(SwingConstants.CENTER);
-        lblListOfBooks.setFont(new Font("Tahoma", Font.BOLD, 11));
-        lblListOfBooks.setBounds(0, 8, 640, 20);
-        add(lblListOfBooks);
+        banner = Theme.banner("LIST OF BOOKS");
+        place(banner, 0, 0, 640, 30);
+        add(banner);
 
         JLabel lblSearch = new JLabel("Search:");
-        lblSearch.setBounds(20, 36, 60, 20);
+        lblSearch.setFont(Theme.FONT_LABEL);
+        place(lblSearch, 20, 40, 60, 22);
         add(lblSearch);
 
         txtSearch = new JTextField();
-        txtSearch.setBounds(85, 36, 220, 22);
+        txtSearch.setFont(Theme.FONT_FIELD);
+        txtSearch.setBorder(new javax.swing.border.CompoundBorder(
+            new LineBorder(Theme.DIVIDER, 1), new EmptyBorder(2, 6, 2, 6)));
+        place(txtSearch, 85, 40, 220, 24);
         add(txtSearch);
         // Live filter: re-run the search on every keystroke instead of
         // waiting for a button press.
         txtSearch.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
-                refreshTable();
+                refresh();
             }
 
             @Override
             public void removeUpdate(DocumentEvent e) {
-                refreshTable();
+                refresh();
             }
 
             @Override
             public void changedUpdate(DocumentEvent e) {
-                refreshTable();
+                refresh();
             }
         });
 
-        // Column headers match Book's real fields (no more "New column"
-        // placeholders). isCellEditable is overridden so the table is
-        // display-only -- edits always go through the Add/Edit screen,
-        // never by typing straight into a cell.
-        tableModel = new DefaultTableModel(
-            new String[] { "Book ID", "Title", "Author", "Genre", "Availability" }, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
+        cardListPanel = new CardListPanel();
+        JScrollPane scrollPane = new JScrollPane(cardListPanel);
+        scrollPane.setBorder(new LineBorder(Theme.DIVIDER, 1));
+        scrollPane.getVerticalScrollBar().setUnitIncrement(24);
+        scrollPane.getViewport().setBackground(Theme.CARD_BG);
+        place(scrollPane, 20, 72, 430, 212);
+        add(scrollPane);
 
-        table = new JTable(tableModel);
-        table.setBorder(new LineBorder(new Color(0, 0, 0)));
-        table.setBounds(20, 66, 430, 210);
-        add(table);
-
-        // Column widths only need to be set once -- refreshTable() below
-        // reuses the same tableModel/columns and only swaps the row data,
-        // so these widths stick around across refreshes.
-        table.getColumnModel().getColumn(0).setPreferredWidth(55);
-        table.getColumnModel().getColumn(1).setPreferredWidth(135);
-        table.getColumnModel().getColumn(2).setPreferredWidth(105);
-        table.getColumnModel().getColumn(3).setPreferredWidth(65);
-        table.getColumnModel().getColumn(4).setPreferredWidth(70);
-
-        // Double-click a row as a shortcut for Edit.
-        table.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) {
-                    editSelectedBook();
-                }
-            }
-        });
-
-        JButton btnAddNew = new JButton("ADD NEW");
-        btnAddNew.setBounds(460, 66, 150, 28);
-        btnAddNew.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                mainFrame.showBookForm(null);
-            }
-        });
+        // Add New / Delete are the management role's buttons only --
+        // see setManageMode() -- hidden by default so this screen opens
+        // as the plain read-only list.
+        btnAddNew = new PillButton("ADD NEW");
+        place(btnAddNew, 460, 72, 150, 30);
+        btnAddNew.addActionListener(e -> mainFrame.showBookForm(null));
         add(btnAddNew);
 
-        JButton btnEdit = new JButton("EDIT");
-        btnEdit.setBounds(460, 100, 150, 28);
-        btnEdit.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                editSelectedBook();
-            }
-        });
-        add(btnEdit);
-
-        JButton btnDelete = new JButton("DELETE");
-        btnDelete.setBounds(460, 134, 150, 28);
-        btnDelete.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                deleteSelectedBook();
-            }
-        });
+        btnDelete = new PillButton("DELETE", new Color(0xA5, 0x33, 0x33),
+            new Color(0xC0, 0x45, 0x45), new Color(0x80, 0x24, 0x24));
+        place(btnDelete, 460, 110, 150, 30);
+        btnDelete.addActionListener(e -> deleteSelectedBook());
         add(btnDelete);
 
-        JButton btnBack = new JButton("BACK");
-        btnBack.setBounds(270, 300, 100, 28);
-        btnBack.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                mainFrame.showCard(MainFrame.CARD_DASHBOARD);
-            }
-        });
+        PillButton btnBack = new PillButton("BACK");
+        place(btnBack, 270, 300, 100, 28);
+        btnBack.addActionListener(e -> mainFrame.showCard(MainFrame.CARD_DASHBOARD));
         add(btnBack);
+
+        setManageMode(false);
+    }
+
+    private void place(java.awt.Component c, int x, int y, int w, int h) {
+        layout.put(c, x, y, w, h);
     }
 
     /**
-     * Reloads the table from the shared Library, applying the current
+     * Switches this screen between the plain read-only "Book List" role
+     * and the "Add / Edit Books" management role: only the management
+     * role shows Add New / Delete, and only it opens the editable form
+     * on double-click (the plain list opens the read-only viewer
+     * instead). Called by MainFrame right before showing this card --
+     * see MainFrame.showBookList() / showBookManage().
+     */
+    public void setManageMode(boolean manageMode) {
+        this.manageMode = manageMode;
+        banner.setText(manageMode ? "ADD / EDIT BOOKS" : "LIST OF BOOKS");
+        btnAddNew.setVisible(manageMode);
+        btnDelete.setVisible(manageMode);
+    }
+
+    /**
+     * Reloads the card list from the shared Library, applying the current
      * search text as a filter. Called on every keystroke in the search
      * box, and by MainFrame every time this screen is shown (see
-     * MainFrame.showCard) so the table never shows stale data.
+     * MainFrame.showCard) so the list never shows stale data.
      */
-    public void refreshTable() {
+    public void refresh() {
         String query = txtSearch.getText().trim().toLowerCase();
 
         displayedBooks = new ArrayList<>();
@@ -168,36 +150,50 @@ public class BookListPanel extends JPanel {
             }
         }
 
-        tableModel.setRowCount(0);
-        for (Book book : displayedBooks) {
-            tableModel.addRow(new Object[] {
-                book.getBookId(),
-                book.getTitle(),
-                book.getAuthor(),
-                book.getGenre(),
-                book.isAvailable() ? "Available" : "Borrowed"
-            });
+        selectedIndex = -1;
+        cardPanels = new ArrayList<>();
+        cardListPanel.removeAll();
+        for (int i = 0; i < displayedBooks.size(); i++) {
+            Book book = displayedBooks.get(i);
+            int rowIndex = i;
+            BookCardPanel card = new BookCardPanel(book,
+                () -> selectRow(rowIndex),
+                () -> openBook(book));
+            cardPanels.add(card);
+            cardListPanel.add(card);
+        }
+        cardListPanel.revalidate();
+        cardListPanel.repaint();
+    }
+
+    /** Double-click target: the editable form in manage mode, the read-only viewer otherwise. */
+    private void openBook(Book book) {
+        if (manageMode) {
+            mainFrame.showBookForm(book);
+        } else {
+            mainFrame.showBookDetail(book);
         }
     }
 
-    /** True if any of the book's fields contain the search text. */
+    private void selectRow(int index) {
+        selectedIndex = index;
+        for (int i = 0; i < cardPanels.size(); i++) {
+            cardPanels.get(i).setSelected(i == index);
+        }
+    }
+
+    /** True if any of the book's fields (including its tags) contain the search text. */
     private boolean matches(Book book, String query) {
-        return contains(book.getBookId(), query)
-            || contains(book.getTitle(), query)
+        return contains(book.getTitle(), query)
             || contains(book.getAuthor(), query)
-            || contains(book.getGenre(), query);
+            || contains(book.getGenre(), query)
+            || contains(book.getIsbn(), query)
+            || contains(book.getPublisher(), query)
+            || contains(book.getTags(), query);
     }
 
     private boolean contains(String field, String query) {
         return field != null && field.toLowerCase().contains(query);
-    }
-
-    /** Opens the Add/Edit screen pre-filled with the selected row, if any. */
-    private void editSelectedBook() {
-        Book selected = getSelectedBook();
-        if (selected != null) {
-            mainFrame.showBookForm(selected);
-        }
     }
 
     /** Removes the selected row from the library, after confirming with the user. */
@@ -213,7 +209,7 @@ public class BookListPanel extends JPanel {
             JOptionPane.YES_NO_OPTION);
         if (choice == JOptionPane.YES_OPTION) {
             mainFrame.getLibrary().getBooks().remove(selected);
-            refreshTable();
+            refresh();
         }
     }
 
@@ -222,15 +218,14 @@ public class BookListPanel extends JPanel {
      * dialog instead of an exception) if nothing is selected.
      */
     private Book getSelectedBook() {
-        int row = table.getSelectedRow();
-        if (row == -1) {
+        if (selectedIndex < 0 || selectedIndex >= displayedBooks.size()) {
             JOptionPane.showMessageDialog(this,
                 "Please select a book first.",
                 "No Selection",
                 JOptionPane.WARNING_MESSAGE);
             return null;
         }
-        return displayedBooks.get(row);
+        return displayedBooks.get(selectedIndex);
     }
 
     /**

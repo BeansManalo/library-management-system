@@ -1,162 +1,145 @@
 package lms.gui;
 
 import java.awt.Color;
-import java.awt.Font;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JTable;
+import javax.swing.JScrollPane;
 import javax.swing.JTextField;
-import javax.swing.SwingConstants;
+import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.table.DefaultTableModel;
 import lms.core.Member;
 
 @SuppressWarnings("serial")
 public class MemberListPanel extends JPanel {
 
     private MainFrame mainFrame;
-    private JLabel lblListOfMembers;
-    private JTable table;
+    private final ProportionalLayout layout = new ProportionalLayout();
+    private JLabel banner;
     private JTextField txtSearch;
-    private DefaultTableModel tableModel;
+    private CardListPanel cardListPanel;
+    private PillButton btnAddNew;
+    private PillButton btnDelete;
 
-    // Same idea as BookListPanel.displayedMembers: row index in the table
-    // maps 1:1 to index in this list (the currently filtered rows), so a
-    // click on row N always refers to displayedMembers.get(N).
+    // True when this screen is playing the "Add / Edit Members" role
+    // (Add New + Delete visible, double-click opens the editable form)
+    // instead of the plain read-only "Member List" role (double-click
+    // opens the read-only Member Details viewer instead, nothing here
+    // can change a member). Both roles share this one screen/card --
+    // see MainFrame.showMemberList() / showMemberManage() -- the same
+    // way AddEditMemberPanel already reuses one screen for both Add and
+    // Edit.
+    private boolean manageMode;
+
+    // Same idea as BookListPanel: cardPanels mirrors displayedMembers 1:1
+    // so a click can flip one card's selected look without rebuilding
+    // the whole list.
     private List<Member> displayedMembers = new ArrayList<>();
+    private List<MemberCardPanel> cardPanels = new ArrayList<>();
+    private int selectedIndex = -1;
 
     /**
      * Create the panel.
      */
     public MemberListPanel() {
         setPreferredSize(MainFrame.NHD_SIZE);
-        setLayout(null);
+        setBackground(Theme.APP_BG);
+        setLayout(layout);
 
-        lblListOfMembers = new JLabel("LIST OF MEMBERS");
-        lblListOfMembers.setFont(new Font("Tahoma", Font.BOLD, 11));
-        lblListOfMembers.setHorizontalAlignment(SwingConstants.CENTER);
-        lblListOfMembers.setBounds(0, 8, 640, 20);
-        add(lblListOfMembers);
+        banner = Theme.banner("LIST OF MEMBERS");
+        place(banner, 0, 0, 640, 30);
+        add(banner);
 
         JLabel lblSearch = new JLabel("Search:");
-        lblSearch.setBounds(20, 36, 60, 20);
+        lblSearch.setFont(Theme.FONT_LABEL);
+        place(lblSearch, 20, 40, 60, 22);
         add(lblSearch);
 
         txtSearch = new JTextField();
-        txtSearch.setBounds(85, 36, 220, 22);
+        txtSearch.setFont(Theme.FONT_FIELD);
+        txtSearch.setBorder(new javax.swing.border.CompoundBorder(
+            new LineBorder(Theme.DIVIDER, 1), new EmptyBorder(2, 6, 2, 6)));
+        place(txtSearch, 85, 40, 220, 24);
         add(txtSearch);
         // Live filter: re-run the search on every keystroke instead of
         // waiting for a button press.
         txtSearch.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
-                refreshTable();
+                refresh();
             }
 
             @Override
             public void removeUpdate(DocumentEvent e) {
-                refreshTable();
+                refresh();
             }
 
             @Override
             public void changedUpdate(DocumentEvent e) {
-                refreshTable();
+                refresh();
             }
         });
 
-        // Column headers match Member's real fields (no more "New column"
-        // placeholders). isCellEditable is overridden so the table is
-        // display-only -- edits always go through the Add/Edit screen.
-        tableModel = new DefaultTableModel(
-            new String[] { "Member ID", "Name", "Contact Number", "Email", "Address" }, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
+        cardListPanel = new CardListPanel();
+        JScrollPane scrollPane = new JScrollPane(cardListPanel);
+        scrollPane.setBorder(new LineBorder(Theme.DIVIDER, 1));
+        scrollPane.getVerticalScrollBar().setUnitIncrement(24);
+        scrollPane.getViewport().setBackground(Theme.CARD_BG);
+        place(scrollPane, 20, 72, 430, 212);
+        add(scrollPane);
 
-        table = new JTable(tableModel);
-        table.setBorder(new LineBorder(new Color(0, 0, 0)));
-        table.setBounds(20, 66, 430, 210);
-        add(table);
-
-        // Column widths only need to be set once -- refreshTable() below
-        // reuses the same tableModel/columns and only swaps the row data,
-        // so these widths stick around across refreshes.
-        table.getColumnModel().getColumn(0).setPreferredWidth(60);
-        table.getColumnModel().getColumn(1).setPreferredWidth(120);
-        table.getColumnModel().getColumn(2).setPreferredWidth(100);
-        table.getColumnModel().getColumn(3).setPreferredWidth(100);
-        table.getColumnModel().getColumn(4).setPreferredWidth(50);
-
-        // Double-click a row as a shortcut for Edit.
-        table.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) {
-                    editSelectedMember();
-                }
-            }
-        });
-
-        JButton btnAddNew = new JButton("ADD NEW");
-        btnAddNew.setBounds(460, 66, 150, 28);
-        btnAddNew.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                mainFrame.showMemberForm(null);
-            }
-        });
+        // Add New / Delete are the management role's buttons only --
+        // see setManageMode() -- hidden by default so this screen opens
+        // as the plain read-only list.
+        btnAddNew = new PillButton("ADD NEW");
+        place(btnAddNew, 460, 72, 150, 30);
+        btnAddNew.addActionListener(e -> mainFrame.showMemberForm(null));
         add(btnAddNew);
 
-        JButton btnEdit = new JButton("EDIT");
-        btnEdit.setBounds(460, 100, 150, 28);
-        btnEdit.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                editSelectedMember();
-            }
-        });
-        add(btnEdit);
-
-        JButton btnDelete = new JButton("DELETE");
-        btnDelete.setBounds(460, 134, 150, 28);
-        btnDelete.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                deleteSelectedMember();
-            }
-        });
+        btnDelete = new PillButton("DELETE", new Color(0xA5, 0x33, 0x33),
+            new Color(0xC0, 0x45, 0x45), new Color(0x80, 0x24, 0x24));
+        place(btnDelete, 460, 110, 150, 30);
+        btnDelete.addActionListener(e -> deleteSelectedMember());
         add(btnDelete);
 
-        JButton btnBack = new JButton("BACK");
-        btnBack.setBounds(270, 300, 100, 28);
-        btnBack.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                mainFrame.showCard(MainFrame.CARD_DASHBOARD);
-            }
-        });
+        PillButton btnBack = new PillButton("BACK");
+        place(btnBack, 270, 300, 100, 28);
+        btnBack.addActionListener(e -> mainFrame.showCard(MainFrame.CARD_DASHBOARD));
         add(btnBack);
+
+        setManageMode(false);
+    }
+
+    private void place(java.awt.Component c, int x, int y, int w, int h) {
+        layout.put(c, x, y, w, h);
     }
 
     /**
-     * Reloads the table from the shared Library, applying the current
+     * Switches this screen between the plain read-only "Member List"
+     * role and the "Add / Edit Members" management role: only the
+     * management role shows Add New / Delete, and only it opens the
+     * editable form on double-click (the plain list opens the read-only
+     * viewer instead). Called by MainFrame right before showing this
+     * card -- see MainFrame.showMemberList() / showMemberManage().
+     */
+    public void setManageMode(boolean manageMode) {
+        this.manageMode = manageMode;
+        banner.setText(manageMode ? "ADD / EDIT MEMBERS" : "LIST OF MEMBERS");
+        btnAddNew.setVisible(manageMode);
+        btnDelete.setVisible(manageMode);
+    }
+
+    /**
+     * Reloads the card list from the shared Library, applying the current
      * search text as a filter. Called on every keystroke in the search
      * box, and by MainFrame every time this screen is shown (see
-     * MainFrame.showCard) so the table never shows stale data.
+     * MainFrame.showCard) so the list never shows stale data.
      */
-    public void refreshTable() {
+    public void refresh() {
         String query = txtSearch.getText().trim().toLowerCase();
 
         displayedMembers = new ArrayList<>();
@@ -166,15 +149,35 @@ public class MemberListPanel extends JPanel {
             }
         }
 
-        tableModel.setRowCount(0);
-        for (Member member : displayedMembers) {
-            tableModel.addRow(new Object[] {
-                member.getMemberId(),
-                member.getName(),
-                member.getContactNumber(),
-                member.getEmail(),
-                member.getAddress()
-            });
+        selectedIndex = -1;
+        cardPanels = new ArrayList<>();
+        cardListPanel.removeAll();
+        for (int i = 0; i < displayedMembers.size(); i++) {
+            Member member = displayedMembers.get(i);
+            int rowIndex = i;
+            MemberCardPanel card = new MemberCardPanel(member,
+                () -> selectRow(rowIndex),
+                () -> openMember(member));
+            cardPanels.add(card);
+            cardListPanel.add(card);
+        }
+        cardListPanel.revalidate();
+        cardListPanel.repaint();
+    }
+
+    /** Double-click target: the editable form in manage mode, the read-only viewer otherwise. */
+    private void openMember(Member member) {
+        if (manageMode) {
+            mainFrame.showMemberForm(member);
+        } else {
+            mainFrame.showMemberDetail(member);
+        }
+    }
+
+    private void selectRow(int index) {
+        selectedIndex = index;
+        for (int i = 0; i < cardPanels.size(); i++) {
+            cardPanels.get(i).setSelected(i == index);
         }
     }
 
@@ -191,14 +194,6 @@ public class MemberListPanel extends JPanel {
         return field != null && field.toLowerCase().contains(query);
     }
 
-    /** Opens the Add/Edit screen pre-filled with the selected row, if any. */
-    private void editSelectedMember() {
-        Member selected = getSelectedMember();
-        if (selected != null) {
-            mainFrame.showMemberForm(selected);
-        }
-    }
-
     /** Removes the selected row from the library, after confirming with the user. */
     private void deleteSelectedMember() {
         Member selected = getSelectedMember();
@@ -212,7 +207,7 @@ public class MemberListPanel extends JPanel {
             JOptionPane.YES_NO_OPTION);
         if (choice == JOptionPane.YES_OPTION) {
             mainFrame.getLibrary().getMembers().remove(selected);
-            refreshTable();
+            refresh();
         }
     }
 
@@ -221,15 +216,14 @@ public class MemberListPanel extends JPanel {
      * dialog instead of an exception) if nothing is selected.
      */
     private Member getSelectedMember() {
-        int row = table.getSelectedRow();
-        if (row == -1) {
+        if (selectedIndex < 0 || selectedIndex >= displayedMembers.size()) {
             JOptionPane.showMessageDialog(this,
                 "Please select a member first.",
                 "No Selection",
                 JOptionPane.WARNING_MESSAGE);
             return null;
         }
-        return displayedMembers.get(row);
+        return displayedMembers.get(selectedIndex);
     }
 
     /**

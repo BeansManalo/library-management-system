@@ -1,17 +1,11 @@
 package lms.gui;
 
-import java.awt.Font;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
-import javax.swing.SwingConstants;
 import lms.core.Book;
 import lms.core.ValidationException;
 
@@ -19,93 +13,113 @@ import lms.core.ValidationException;
 public class AddEditBookPanel extends JPanel {
 
     private MainFrame mainFrame;
+    private final ProportionalLayout layout = new ProportionalLayout();
     private JLabel lblAddAndEditBooks;
-    private JTextField txtBookId;
+    private JTextField txtIsbn;
     private JTextField txtTitle;
     private JTextField txtAuthor;
     private JTextField txtGenre;
-    private JCheckBox chkAvailable;
+    private JTextField txtPublisher;
+    private DatePickerField txtPublicationDate;
+    private JTextField txtTotalCopies;
+    private JTextField txtTags;
 
     // The book currently being edited, or null while adding a new one.
     // Set by loadBook(), which MainFrame calls right before switching to
     // this card -- see MainFrame.showBookForm().
     private Book editingBook;
 
+    // Shown/parsed as e.g. "February 22, 2022", matching how the book
+    // card displays it.
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.US);
+
     /**
      * Create the panel.
      */
     public AddEditBookPanel() {
         setPreferredSize(MainFrame.NHD_SIZE);
-        setLayout(null);
+        setBackground(Theme.APP_BG);
+        setLayout(layout);
 
-        lblAddAndEditBooks = new JLabel("ADD BOOK");
-        lblAddAndEditBooks.setFont(new Font("Tahoma", Font.BOLD, 11));
-        lblAddAndEditBooks.setHorizontalAlignment(SwingConstants.CENTER);
-        lblAddAndEditBooks.setBounds(0, 10, 640, 24);
+        lblAddAndEditBooks = Theme.banner("ADD BOOK");
+        place(lblAddAndEditBooks, 0, 0, 640, 30);
         add(lblAddAndEditBooks);
 
-        JLabel lblBookId = new JLabel("Book ID:");
-        lblBookId.setBounds(150, 55, 90, 20);
-        add(lblBookId);
+        // Left column: what the book is. ISBN anchors it (there's no
+        // separate Book ID -- the ISBN already uniquely identifies the
+        // title, so a second internal ID would just be one more field to
+        // keep in sync with nothing extra to show for it).
+        txtIsbn = field("ISBN:", 40, 42);
+        txtTitle = field("Title:", 40, 92);
+        txtAuthor = field("Author:", 40, 142);
+        txtGenre = field("Genre:", 40, 192);
 
-        txtBookId = new JTextField();
-        txtBookId.setBounds(250, 54, 220, 22);
-        add(txtBookId);
+        // Right column: catalog/inventory details. No "Available Copies"
+        // field here -- see save() below for why.
+        txtPublisher = field("Publisher:", 340, 42);
+        txtPublicationDate = dateField("Publication Date:", 340, 92, DATE_FORMAT);
+        txtTotalCopies = field("Total Copies:", 340, 142);
+        txtTags = field("Tags:", 340, 192);
+        txtTags.setToolTipText("Comma-separated, e.g. cozy, mystery, sequel");
 
-        JLabel lblTitle = new JLabel("Title:");
-        lblTitle.setBounds(150, 90, 90, 20);
-        add(lblTitle);
+        JLabel tagsHint = new JLabel("Separate multiple tags with a comma");
+        tagsHint.setFont(Theme.FONT_CARD_MUTED);
+        tagsHint.setForeground(Theme.TEXT_MUTED);
+        place(tagsHint, 340, 236, 260, 14);
+        add(tagsHint);
 
-        txtTitle = new JTextField();
-        txtTitle.setBounds(250, 89, 220, 22);
-        add(txtTitle);
-
-        JLabel lblAuthor = new JLabel("Author:");
-        lblAuthor.setBounds(150, 125, 90, 20);
-        add(lblAuthor);
-
-        txtAuthor = new JTextField();
-        txtAuthor.setBounds(250, 124, 220, 22);
-        add(txtAuthor);
-
-        JLabel lblGenre = new JLabel("Genre:");
-        lblGenre.setBounds(150, 160, 90, 20);
-        add(lblGenre);
-
-        txtGenre = new JTextField();
-        txtGenre.setBounds(250, 159, 220, 22);
-        add(txtGenre);
-
-        JLabel lblAvailable = new JLabel("Available:");
-        lblAvailable.setBounds(150, 195, 90, 20);
-        add(lblAvailable);
-
-        chkAvailable = new JCheckBox();
-        chkAvailable.setBounds(250, 194, 20, 20);
-        add(chkAvailable);
-
-        JButton btnSave = new JButton("SAVE");
-        btnSave.setBounds(215, 240, 100, 28);
-        btnSave.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                save();
-            }
-        });
+        PillButton btnSave = new PillButton("SAVE");
+        place(btnSave, 215, 260, 100, 32);
+        btnSave.addActionListener(e -> save());
         add(btnSave);
 
-        JButton btnCancel = new JButton("CANCEL");
-        btnCancel.setBounds(325, 240, 100, 28);
-        btnCancel.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                // Nothing has been written to editingBook at this point
-                // (see save() below), so just navigating away is enough
-                // to discard whatever the user typed.
-                mainFrame.showCard(MainFrame.CARD_DASHBOARD);
-            }
-        });
+        PillButton btnCancel = new PillButton("CANCEL", Theme.TEXT_MUTED,
+            Theme.TEXT_MUTED.brighter(), Theme.TEXT_PRIMARY);
+        place(btnCancel, 325, 260, 100, 32);
+        // Nothing has been written to editingBook at this point (see
+        // save() below), so just navigating away is enough to discard
+        // whatever the user typed. This screen is only ever reached from
+        // the "Add / Edit Books" list (see BookListPanel's manage mode),
+        // so that's where Cancel returns to.
+        btnCancel.addActionListener(e -> mainFrame.showCard(MainFrame.CARD_BOOK_LIST));
         add(btnCancel);
+    }
+
+    /** Registers a component's design-time bounds with the resizable layout. */
+    private void place(java.awt.Component c, int x, int y, int w, int h) {
+        layout.put(c, x, y, w, h);
+    }
+
+    /** Adds a label + text field pair at (x, y) and returns the field. */
+    private JTextField field(String labelText, int x, int y) {
+        JLabel label = new JLabel(labelText);
+        label.setFont(Theme.FONT_LABEL);
+        label.setForeground(Theme.TEXT_PRIMARY);
+        place(label, x, y, 150, 16);
+        add(label);
+
+        JTextField text = new JTextField();
+        text.setFont(Theme.FONT_FIELD);
+        text.setBorder(new javax.swing.border.CompoundBorder(
+            new javax.swing.border.LineBorder(Theme.DIVIDER, 1),
+            new javax.swing.border.EmptyBorder(2, 6, 2, 6)));
+        place(text, x, y + 18, 160, 24);
+        add(text);
+        return text;
+    }
+
+    /** Same as field(), but with a calendar popup instead of a plain text box. */
+    private DatePickerField dateField(String labelText, int x, int y, DateTimeFormatter format) {
+        JLabel label = new JLabel(labelText);
+        label.setFont(Theme.FONT_LABEL);
+        label.setForeground(Theme.TEXT_PRIMARY);
+        place(label, x, y, 150, 16);
+        add(label);
+
+        DatePickerField picker = new DatePickerField(format);
+        place(picker, x, y + 18, 160, 24);
+        add(picker);
+        return picker;
     }
 
     /**
@@ -122,18 +136,24 @@ public class AddEditBookPanel extends JPanel {
 
         if (book == null) {
             lblAddAndEditBooks.setText("ADD BOOK");
-            txtBookId.setText("");
+            txtIsbn.setText("");
             txtTitle.setText("");
             txtAuthor.setText("");
             txtGenre.setText("");
-            chkAvailable.setSelected(true);
+            txtPublisher.setText("");
+            txtPublicationDate.setText("");
+            txtTotalCopies.setText("");
+            txtTags.setText("");
         } else {
             lblAddAndEditBooks.setText("EDIT BOOK");
-            txtBookId.setText(book.getBookId());
+            txtIsbn.setText(book.getIsbn());
             txtTitle.setText(book.getTitle());
             txtAuthor.setText(book.getAuthor());
             txtGenre.setText(book.getGenre());
-            chkAvailable.setSelected(book.isAvailable());
+            txtPublisher.setText(book.getPublisher());
+            txtPublicationDate.setText(book.getPublicationDate());
+            txtTotalCopies.setText(String.valueOf(book.getTotalCopies()));
+            txtTags.setText(book.getTags());
         }
     }
 
@@ -143,8 +163,11 @@ public class AddEditBookPanel extends JPanel {
      * Either way, control returns to the Book List screen afterwards.
      */
     private void save() {
+        int totalCopies;
         try {
-            validate(txtBookId.getText(), txtTitle.getText(), txtAuthor.getText(), txtGenre.getText());
+            validateRequired(txtIsbn.getText(), txtTitle.getText(), txtAuthor.getText(),
+                txtGenre.getText(), txtPublisher.getText(), txtPublicationDate.getText());
+            totalCopies = parseNonNegative(txtTotalCopies.getText(), "Total Copies");
         } catch (ValidationException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Missing Information", JOptionPane.WARNING_MESSAGE);
             return;
@@ -153,11 +176,22 @@ public class AddEditBookPanel extends JPanel {
         boolean isNew = (editingBook == null);
         Book book = isNew ? new Book() : editingBook;
 
-        book.setBookId(txtBookId.getText().trim());
+        book.setIsbn(txtIsbn.getText().trim());
         book.setTitle(txtTitle.getText().trim());
         book.setAuthor(txtAuthor.getText().trim());
         book.setGenre(txtGenre.getText().trim());
-        book.setAvailable(chkAvailable.isSelected());
+        book.setPublisher(txtPublisher.getText().trim());
+        book.setPublicationDate(txtPublicationDate.getText().trim());
+        book.setTotalCopies(totalCopies);
+        book.setTags(txtTags.getText().trim());
+
+        // Available Copies isn't a form field -- how many of a book are
+        // actually on the shelf right now is what a borrowing system
+        // would own, not something to hand-type here. A new book starts
+        // fully available; editing an existing one just keeps whatever
+        // was already checked out, capped so it can't exceed the new
+        // total (e.g. if a copy was removed from the count).
+        book.setAvailableCopies(isNew ? totalCopies : Math.min(book.getAvailableCopies(), totalCopies));
 
         if (isNew) {
             mainFrame.getLibrary().getBooks().add(book);
@@ -170,9 +204,10 @@ public class AddEditBookPanel extends JPanel {
     }
 
     /** Throws ValidationException naming the first required field left blank. */
-    private void validate(String bookId, String title, String author, String genre) throws ValidationException {
-        if (bookId.trim().isEmpty()) {
-            throw new ValidationException("Book ID is required.");
+    private void validateRequired(String isbn, String title, String author, String genre,
+            String publisher, String publicationDate) throws ValidationException {
+        if (isbn.trim().isEmpty()) {
+            throw new ValidationException("ISBN is required.");
         }
         if (title.trim().isEmpty()) {
             throw new ValidationException("Title is required.");
@@ -182,6 +217,25 @@ public class AddEditBookPanel extends JPanel {
         }
         if (genre.trim().isEmpty()) {
             throw new ValidationException("Genre is required.");
+        }
+        if (publisher.trim().isEmpty()) {
+            throw new ValidationException("Publisher is required.");
+        }
+        if (publicationDate.trim().isEmpty()) {
+            throw new ValidationException("Publication Date is required.");
+        }
+    }
+
+    /** Parses a whole number >= 0, or throws ValidationException naming the field. */
+    private int parseNonNegative(String value, String fieldName) throws ValidationException {
+        try {
+            int parsed = Integer.parseInt(value.trim());
+            if (parsed < 0) {
+                throw new ValidationException(fieldName + " can't be negative.");
+            }
+            return parsed;
+        } catch (NumberFormatException ex) {
+            throw new ValidationException(fieldName + " must be a whole number.");
         }
     }
 

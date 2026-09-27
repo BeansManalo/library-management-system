@@ -1,16 +1,11 @@
 package lms.gui;
 
-import java.awt.Font;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import javax.swing.JButton;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
-import javax.swing.SwingConstants;
 import lms.core.Member;
 import lms.core.ValidationException;
 
@@ -18,93 +13,119 @@ import lms.core.ValidationException;
 public class AddEditMemberPanel extends JPanel {
 
     private MainFrame mainFrame;
+    private final ProportionalLayout layout = new ProportionalLayout();
     private JLabel lblAddAndEditMembers;
     private JTextField txtMemberId;
     private JTextField txtName;
     private JTextField txtContactNumber;
     private JTextField txtEmail;
     private JTextField txtAddress;
+    private DatePickerField txtJoinDate;
+    private DatePickerField txtEndDate;
 
     // The member currently being edited, or null while adding a new one.
     // Set by loadMember(), which MainFrame calls right before switching to
     // this card -- see MainFrame.showMemberForm().
     private Member editingMember;
 
+    // Shown/parsed as e.g. "09/25/2026", matching how the member card
+    // displays it.
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+
     /**
      * Create the panel.
      */
     public AddEditMemberPanel() {
         setPreferredSize(MainFrame.NHD_SIZE);
-        setLayout(null);
+        setBackground(Theme.APP_BG);
+        setLayout(layout);
 
-        lblAddAndEditMembers = new JLabel("ADD MEMBER");
-        lblAddAndEditMembers.setFont(new Font("Tahoma", Font.BOLD, 11));
-        lblAddAndEditMembers.setHorizontalAlignment(SwingConstants.CENTER);
-        lblAddAndEditMembers.setBounds(0, 10, 640, 24);
+        lblAddAndEditMembers = Theme.banner("ADD MEMBER");
+        place(lblAddAndEditMembers, 0, 0, 640, 30);
         add(lblAddAndEditMembers);
 
-        JLabel lblMemberId = new JLabel("Member ID:");
-        lblMemberId.setBounds(150, 55, 90, 20);
-        add(lblMemberId);
+        // Left column: who the member is.
+        txtMemberId = field("Member ID:", 40, 42);
+        txtName = field("Name:", 40, 92);
+        txtContactNumber = field("Contact Number:", 40, 142);
+        txtEmail = field("Email:", 40, 192);
 
-        txtMemberId = new JTextField();
-        txtMemberId.setBounds(250, 54, 220, 22);
-        add(txtMemberId);
+        // Right column: where they are and their membership window.
+        // Books Borrowed / Penalties are intentionally not here -- those
+        // will belong to a future borrowing system, not something typed
+        // in by hand; the list/detail views still show them read-only.
+        txtAddress = field("Address:", 340, 42);
+        txtJoinDate = dateField("Join Date:", 340, 92, DATE_FORMAT);
+        txtEndDate = dateField("End Date:", 340, 142, DATE_FORMAT);
 
-        JLabel lblName = new JLabel("Name:");
-        lblName.setBounds(150, 90, 90, 20);
-        add(lblName);
-
-        txtName = new JTextField();
-        txtName.setBounds(250, 89, 220, 22);
-        add(txtName);
-
-        JLabel lblContactNumber = new JLabel("Contact Number:");
-        lblContactNumber.setBounds(150, 125, 90, 20);
-        add(lblContactNumber);
-
-        txtContactNumber = new JTextField();
-        txtContactNumber.setBounds(250, 124, 220, 22);
-        add(txtContactNumber);
-
-        JLabel lblEmail = new JLabel("Email:");
-        lblEmail.setBounds(150, 160, 90, 20);
-        add(lblEmail);
-
-        txtEmail = new JTextField();
-        txtEmail.setBounds(250, 159, 220, 22);
-        add(txtEmail);
-
-        JLabel lblAddress = new JLabel("Address:");
-        lblAddress.setBounds(150, 195, 90, 20);
-        add(lblAddress);
-
-        txtAddress = new JTextField();
-        txtAddress.setBounds(250, 194, 220, 22);
-        add(txtAddress);
-
-        JButton btnSave = new JButton("SAVE");
-        btnSave.setBounds(215, 240, 100, 28);
-        btnSave.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                save();
+        // End Date defaults to a year after Join Date, and only opens up
+        // for manual editing once there's a Join Date to measure from --
+        // recomputed every time Join Date changes, so it always reflects
+        // "one year after" until the person overrides it themselves.
+        txtEndDate.setEnabled(false);
+        txtJoinDate.setOnDateChanged(() -> {
+            LocalDate join = txtJoinDate.getDate();
+            if (join != null) {
+                txtEndDate.setDate(join.plusYears(1));
+                txtEndDate.setEnabled(true);
+            } else {
+                txtEndDate.setText("");
+                txtEndDate.setEnabled(false);
             }
         });
+
+        PillButton btnSave = new PillButton("SAVE");
+        place(btnSave, 215, 260, 100, 32);
+        btnSave.addActionListener(e -> save());
         add(btnSave);
 
-        JButton btnCancel = new JButton("CANCEL");
-        btnCancel.setBounds(325, 240, 100, 28);
-        btnCancel.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                // Nothing has been written to editingMember at this point
-                // (see save() below), so just navigating away is enough
-                // to discard whatever the user typed.
-                mainFrame.showCard(MainFrame.CARD_DASHBOARD);
-            }
-        });
+        PillButton btnCancel = new PillButton("CANCEL", Theme.TEXT_MUTED,
+            Theme.TEXT_MUTED.brighter(), Theme.TEXT_PRIMARY);
+        place(btnCancel, 325, 260, 100, 32);
+        // Nothing has been written to editingMember at this point (see
+        // save() below), so just navigating away is enough to discard
+        // whatever the user typed. This screen is only ever reached from
+        // the "Add / Edit Members" list (see MemberListPanel's manage
+        // mode), so that's where Cancel returns to.
+        btnCancel.addActionListener(e -> mainFrame.showCard(MainFrame.CARD_MEMBER_LIST));
         add(btnCancel);
+    }
+
+    /** Registers a component's design-time bounds with the resizable layout. */
+    private void place(java.awt.Component c, int x, int y, int w, int h) {
+        layout.put(c, x, y, w, h);
+    }
+
+    /** Adds a label + text field pair at (x, y) and returns the field. */
+    private JTextField field(String labelText, int x, int y) {
+        JLabel label = new JLabel(labelText);
+        label.setFont(Theme.FONT_LABEL);
+        label.setForeground(Theme.TEXT_PRIMARY);
+        place(label, x, y, 150, 16);
+        add(label);
+
+        JTextField text = new JTextField();
+        text.setFont(Theme.FONT_FIELD);
+        text.setBorder(new javax.swing.border.CompoundBorder(
+            new javax.swing.border.LineBorder(Theme.DIVIDER, 1),
+            new javax.swing.border.EmptyBorder(2, 6, 2, 6)));
+        place(text, x, y + 18, 160, 24);
+        add(text);
+        return text;
+    }
+
+    /** Same as field(), but with a calendar popup instead of a plain text box. */
+    private DatePickerField dateField(String labelText, int x, int y, DateTimeFormatter format) {
+        JLabel label = new JLabel(labelText);
+        label.setFont(Theme.FONT_LABEL);
+        label.setForeground(Theme.TEXT_PRIMARY);
+        place(label, x, y, 150, 16);
+        add(label);
+
+        DatePickerField picker = new DatePickerField(format);
+        place(picker, x, y + 18, 160, 24);
+        add(picker);
+        return picker;
     }
 
     /**
@@ -126,6 +147,9 @@ public class AddEditMemberPanel extends JPanel {
             txtContactNumber.setText("");
             txtEmail.setText("");
             txtAddress.setText("");
+            txtJoinDate.setText("");
+            txtEndDate.setText("");
+            txtEndDate.setEnabled(false);
         } else {
             lblAddAndEditMembers.setText("EDIT MEMBER");
             txtMemberId.setText(member.getMemberId());
@@ -133,6 +157,9 @@ public class AddEditMemberPanel extends JPanel {
             txtContactNumber.setText(member.getContactNumber());
             txtEmail.setText(member.getEmail());
             txtAddress.setText(member.getAddress());
+            txtJoinDate.setText(member.getJoinDate());
+            txtEndDate.setText(member.getEndDate());
+            txtEndDate.setEnabled(member.getJoinDate() != null && !member.getJoinDate().isEmpty());
         }
     }
 
@@ -144,8 +171,8 @@ public class AddEditMemberPanel extends JPanel {
      */
     private void save() {
         try {
-            validate(txtMemberId.getText(), txtName.getText(), txtContactNumber.getText(),
-                txtEmail.getText(), txtAddress.getText());
+            validateRequired(txtMemberId.getText(), txtName.getText(), txtContactNumber.getText(),
+                txtEmail.getText(), txtAddress.getText(), txtJoinDate.getText(), txtEndDate.getText());
         } catch (ValidationException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Missing Information", JOptionPane.WARNING_MESSAGE);
             return;
@@ -159,6 +186,15 @@ public class AddEditMemberPanel extends JPanel {
         member.setContactNumber(txtContactNumber.getText().trim());
         member.setEmail(txtEmail.getText().trim());
         member.setAddress(txtAddress.getText().trim());
+        member.setJoinDate(txtJoinDate.getText().trim());
+        member.setEndDate(txtEndDate.getText().trim());
+        // Books Borrowed / Penalties are system-managed, not form fields
+        // -- a brand-new member simply starts at zero of each; editing an
+        // existing member leaves their current counts untouched.
+        if (isNew) {
+            member.setBooksBorrowed(0);
+            member.setPenalties(0);
+        }
 
         if (isNew) {
             mainFrame.getLibrary().getMembers().add(member);
@@ -171,8 +207,8 @@ public class AddEditMemberPanel extends JPanel {
     }
 
     /** Throws ValidationException naming the first required field left blank. */
-    private void validate(String memberId, String name, String contactNumber, String email, String address)
-            throws ValidationException {
+    private void validateRequired(String memberId, String name, String contactNumber, String email,
+            String address, String joinDate, String endDate) throws ValidationException {
         if (memberId.trim().isEmpty()) {
             throw new ValidationException("Member ID is required.");
         }
@@ -187,6 +223,12 @@ public class AddEditMemberPanel extends JPanel {
         }
         if (address.trim().isEmpty()) {
             throw new ValidationException("Address is required.");
+        }
+        if (joinDate.trim().isEmpty()) {
+            throw new ValidationException("Join Date is required.");
+        }
+        if (endDate.trim().isEmpty()) {
+            throw new ValidationException("End Date is required.");
         }
     }
 

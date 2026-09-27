@@ -12,7 +12,7 @@ import lms.core.Member;
 @SuppressWarnings("serial")
 public class MainFrame extends JFrame {
 
-    /** Consistent nHD (640x360) size shared by every screen in the app. */
+    /** Reference nHD (640x360) size every screen's layout is designed against. */
     public static final Dimension NHD_SIZE = new Dimension(640, 360);
 
     public static final String CARD_DASHBOARD = "DASHBOARD";
@@ -20,6 +20,8 @@ public class MainFrame extends JFrame {
     public static final String CARD_MEMBER_LIST = "MEMBER_LIST";
     public static final String CARD_ADD_EDIT_BOOK = "ADD_EDIT_BOOK";
     public static final String CARD_ADD_EDIT_MEMBER = "ADD_EDIT_MEMBER";
+    public static final String CARD_BOOK_DETAIL = "BOOK_DETAIL";
+    public static final String CARD_MEMBER_DETAIL = "MEMBER_DETAIL";
 
     private JPanel contentPane;
     private CardLayout cardLayout;
@@ -28,11 +30,14 @@ public class MainFrame extends JFrame {
     private final Library library = new Library();
 
     // Kept as fields (not just constructor-local) so showCard() and the
-    // showXxxForm() helpers below can reach them after construction.
+    // showXxxForm()/showXxxDetail() helpers below can reach them after
+    // construction.
     private BookListPanel bookListPanel;
     private MemberListPanel memberListPanel;
     private AddEditBookPanel addEditBookPanel;
     private AddEditMemberPanel addEditMemberPanel;
+    private BookDetailPanel bookDetailPanel;
+    private MemberDetailPanel memberDetailPanel;
 
     /**
      * Create the frame.
@@ -41,10 +46,16 @@ public class MainFrame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setTitle("Library Management System");
         setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
-        setResizable(false);
+        // Resizable (including maximize/full screen) -- every screen
+        // uses ProportionalLayout instead of fixed null-layout bounds,
+        // so the whole design scales with the window instead of
+        // clipping or leaving dead space at larger sizes.
+        setResizable(true);
+        setMinimumSize(new Dimension(480, 270));
 
         cardLayout = new CardLayout();
         contentPane = new JPanel(cardLayout);
+        contentPane.setBackground(Theme.APP_BG);
         setContentPane(contentPane);
 
         DashboardPanel dashboardPanel = new DashboardPanel();
@@ -66,6 +77,14 @@ public class MainFrame extends JFrame {
         addEditMemberPanel = new AddEditMemberPanel();
         addEditMemberPanel.setMainFrame(this);
         contentPane.add(addEditMemberPanel, CARD_ADD_EDIT_MEMBER);
+
+        bookDetailPanel = new BookDetailPanel();
+        bookDetailPanel.setMainFrame(this);
+        contentPane.add(bookDetailPanel, CARD_BOOK_DETAIL);
+
+        memberDetailPanel = new MemberDetailPanel();
+        memberDetailPanel.setMainFrame(this);
+        contentPane.add(memberDetailPanel, CARD_MEMBER_DETAIL);
 
         cardLayout.show(contentPane, CARD_DASHBOARD);
 
@@ -90,9 +109,9 @@ public class MainFrame extends JFrame {
         // here every time they become visible, or they'd keep showing
         // whatever was on screen the last time the user looked at them.
         if (cardName.equals(CARD_BOOK_LIST)) {
-            bookListPanel.refreshTable();
+            bookListPanel.refresh();
         } else if (cardName.equals(CARD_MEMBER_LIST)) {
-            memberListPanel.refreshTable();
+            memberListPanel.refresh();
         }
         // Add another "else if" here for any future list screen that needs
         // the same reload-on-show treatment.
@@ -114,5 +133,41 @@ public class MainFrame extends JFrame {
     public void showMemberForm(Member memberToEdit) {
         addEditMemberPanel.loadMember(memberToEdit);
         showCard(CARD_ADD_EDIT_MEMBER);
+    }
+
+    /** Opens the Book List in its plain, read-only browse/search role. */
+    public void showBookList() {
+        bookListPanel.setManageMode(false);
+        showCard(CARD_BOOK_LIST);
+    }
+
+    /** Opens the same Book List screen in its "Add / Edit Books" management role. */
+    public void showBookManage() {
+        bookListPanel.setManageMode(true);
+        showCard(CARD_BOOK_LIST);
+    }
+
+    /** Opens the Member List in its plain, read-only browse/search role. */
+    public void showMemberList() {
+        memberListPanel.setManageMode(false);
+        showCard(CARD_MEMBER_LIST);
+    }
+
+    /** Opens the same Member List screen in its "Add / Edit Members" management role. */
+    public void showMemberManage() {
+        memberListPanel.setManageMode(true);
+        showCard(CARD_MEMBER_LIST);
+    }
+
+    /** Opens the read-only, in-depth Book Details screen for the given book. */
+    public void showBookDetail(Book book) {
+        bookDetailPanel.loadBook(book);
+        showCard(CARD_BOOK_DETAIL);
+    }
+
+    /** Opens the read-only library-card-style Member Details screen for the given member. */
+    public void showMemberDetail(Member member) {
+        memberDetailPanel.loadMember(member);
+        showCard(CARD_MEMBER_DETAIL);
     }
 }

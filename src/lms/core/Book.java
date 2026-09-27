@@ -1,25 +1,25 @@
 package lms.core;
 
 /**
- * A single book in the library's catalog.
+ * A single book in the library's catalog. ISBN is its identifier --
+ * there's no separate internal Book ID, since the ISBN already
+ * uniquely names the title and staff already have it on hand.
  * Plain data holder (POJO) -- no logic beyond getters/setters, so it
  * stays easy to swap for a database-backed row later.
  */
 public class Book {
 
-    private String bookId;
     private String title;
     private String author;
     private String genre;
-    private boolean available;
-
-    public String getBookId() {
-        return bookId;
-    }
-
-    public void setBookId(String bookId) {
-        this.bookId = bookId;
-    }
+    private String isbn;
+    private String publisher;
+    private String publicationDate;
+    private int totalCopies;
+    private int availableCopies;
+    // Free-form, comma-separated search keywords -- separate from Genre,
+    // which is a single category; a book can carry several tags.
+    private String tags;
 
     public String getTitle() {
         return title;
@@ -45,11 +45,56 @@ public class Book {
         this.genre = genre;
     }
 
-    public boolean isAvailable() {
-        return available;
+    public String getIsbn() {
+        return isbn;
     }
 
-    public void setAvailable(boolean available) {
-        this.available = available;
+    public void setIsbn(String isbn) {
+        this.isbn = isbn;
+    }
+
+    public String getPublisher() {
+        return publisher;
+    }
+
+    public void setPublisher(String publisher) {
+        this.publisher = publisher;
+    }
+
+    public String getPublicationDate() {
+        return publicationDate;
+    }
+
+    public void setPublicationDate(String publicationDate) {
+        this.publicationDate = publicationDate;
+    }
+
+    public int getTotalCopies() {
+        return totalCopies;
+    }
+
+    public void setTotalCopies(int totalCopies) {
+        this.totalCopies = totalCopies;
+    }
+
+    public int getAvailableCopies() {
+        return availableCopies;
+    }
+
+    public void setAvailableCopies(int availableCopies) {
+        this.availableCopies = availableCopies;
+    }
+
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
+    }
+
+    /** True as long as at least one copy isn't checked out. */
+    public boolean isAvailable() {
+        return availableCopies > 0;
     }
 }
