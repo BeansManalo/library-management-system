@@ -1,6 +1,8 @@
 package lms.gui;
 
 import java.awt.Color;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JLabel;
@@ -22,6 +24,7 @@ public class MemberListPanel extends JPanel {
     private JLabel banner;
     private JTextField txtSearch;
     private CardListPanel cardListPanel;
+    private PillButton btnView;
     private PillButton btnAddNew;
     private PillButton btnDelete;
 
@@ -49,6 +52,18 @@ public class MemberListPanel extends JPanel {
         setPreferredSize(MainFrame.NHD_SIZE);
         setBackground(Theme.APP_BG);
         setLayout(layout);
+
+        // Catches clicks on the blank margins around the table and
+        // buttons -- everywhere that isn't a specific control. The
+        // table's own blank space (below the last row) is handled
+        // separately below, since the scroll pane's viewport sits in
+        // front of this panel there.
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                selectRow(-1);
+            }
+        });
 
         banner = Theme.banner("LIST OF MEMBERS");
         place(banner, 0, 0, 640, 30);
@@ -91,18 +106,32 @@ public class MemberListPanel extends JPanel {
         scrollPane.getViewport().setBackground(Theme.CARD_BG);
         place(scrollPane, 20, 72, 430, 212);
         add(scrollPane);
+        CardListPanel.makeBackgroundDeselectable(scrollPane, cardListPanel, () -> selectRow(-1));
+
+        // Visible in both roles, at the top of the button column so
+        // there's no dead space above it when Add New / Delete are
+        // hidden -- see setManageMode() for the VIEW/EDIT label swap.
+        btnView = new PillButton("VIEW");
+        place(btnView, 460, 72, 150, 30);
+        btnView.addActionListener(e -> {
+            Member selected = getSelectedMember();
+            if (selected != null) {
+                openMember(selected);
+            }
+        });
+        add(btnView);
 
         // Add New / Delete are the management role's buttons only --
         // see setManageMode() -- hidden by default so this screen opens
         // as the plain read-only list.
         btnAddNew = new PillButton("ADD NEW");
-        place(btnAddNew, 460, 72, 150, 30);
+        place(btnAddNew, 460, 110, 150, 30);
         btnAddNew.addActionListener(e -> mainFrame.showMemberForm(null));
         add(btnAddNew);
 
         btnDelete = new PillButton("DELETE", new Color(0xA5, 0x33, 0x33),
             new Color(0xC0, 0x45, 0x45), new Color(0x80, 0x24, 0x24));
-        place(btnDelete, 460, 110, 150, 30);
+        place(btnDelete, 460, 148, 150, 30);
         btnDelete.addActionListener(e -> deleteSelectedMember());
         add(btnDelete);
 
@@ -129,6 +158,7 @@ public class MemberListPanel extends JPanel {
     public void setManageMode(boolean manageMode) {
         this.manageMode = manageMode;
         banner.setText(manageMode ? "ADD / EDIT MEMBERS" : "LIST OF MEMBERS");
+        btnView.setText(manageMode ? "EDIT" : "VIEW");
         btnAddNew.setVisible(manageMode);
         btnDelete.setVisible(manageMode);
     }

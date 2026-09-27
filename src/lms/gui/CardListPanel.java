@@ -8,6 +8,7 @@ import java.awt.event.MouseEvent;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.border.CompoundBorder;
@@ -78,6 +79,26 @@ public class CardListPanel extends JPanel implements Scrollable {
                 makeClickable(child, onSelect, onOpen);
             }
         }
+    }
+
+    /**
+     * Clicking the table's own background -- anywhere in the scroll pane
+     * that isn't one of the row cards -- deselects the current row, the
+     * same way clicking empty space around a file list normally does.
+     * A card's own click never reaches here (see makeClickable above),
+     * so this only ever fires for genuinely empty space: the viewport
+     * catches the gap below the last row when the list doesn't fill the
+     * visible height, and this panel catches everywhere else.
+     */
+    static void makeBackgroundDeselectable(JScrollPane scrollPane, CardListPanel listPanel, Runnable onDeselect) {
+        MouseAdapter deselect = new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                onDeselect.run();
+            }
+        };
+        scrollPane.getViewport().addMouseListener(deselect);
+        listPanel.addMouseListener(deselect);
     }
 
     /** The narrow two-stat column on the left edge of every card. */

@@ -21,19 +21,21 @@ import javax.swing.border.LineBorder;
 
 /**
  * A text field plus a small calendar button that opens a popup month
- * grid, so a date can be picked instead of always typed by hand. The
- * text field stays editable -- typing a valid date (per the given
- * formatter) still works and keeps the two in sync.
+ * grid. The date can only be set by picking a day from that popup --
+ * the text field itself is read-only, so there's no way to type in an
+ * invalid (or just plain wrong) date by hand.
  */
 @SuppressWarnings("serial")
 public class DatePickerField extends JPanel {
 
     private final JTextField field;
     private final DateTimeFormatter format;
+    private LocalDate minDate;
+    private LocalDate maxDate;
 
-    // Fires after the field's date changes, however it changed (typed,
-    // or picked from the popup) -- e.g. AddEditMemberPanel uses this on
-    // the Join Date field to recompute the default End Date.
+    // Fires after a date is picked from the popup -- e.g.
+    // AddEditMemberPanel uses this on the Join Date field to recompute
+    // the default End Date.
     private Runnable onDateChanged = () -> { };
 
     public DatePickerField(DateTimeFormatter format) {
@@ -44,13 +46,14 @@ public class DatePickerField extends JPanel {
         field = new JTextField();
         field.setFont(Theme.FONT_FIELD);
         field.setBorder(new CompoundBorder(new LineBorder(Theme.DIVIDER, 1), new EmptyBorder(2, 6, 2, 6)));
-        field.addActionListener(e -> onDateChanged.run());
-        field.addFocusListener(new java.awt.event.FocusAdapter() {
-            @Override
-            public void focusLost(java.awt.event.FocusEvent e) {
-                onDateChanged.run();
-            }
-        });
+        field.setEditable(false);
+        // Not just non-editable but non-focusable, so clicking it can
+        // never show a text caret -- the popup is the only way in.
+        field.setFocusable(false);
+        // A non-editable JTextField otherwise falls back to the L&F's
+        // grayed-out "inactive" background; keep it looking like a
+        // normal white field instead.
+        field.setBackground(Color.WHITE);
         add(field, BorderLayout.CENTER);
 
         JButton calendarButton = new JButton(RowIcons.calendar(14, Theme.TEXT_PRIMARY));
@@ -67,6 +70,16 @@ public class DatePickerField extends JPanel {
     /** Called after the date changes, from typing or from the popup. */
     public void setOnDateChanged(Runnable listener) {
         this.onDateChanged = listener;
+    }
+
+    /** Days before this date are shown disabled in the popup. Null clears the bound. */
+    public void setMinDate(LocalDate minDate) {
+        this.minDate = minDate;
+    }
+
+    /** Days after this date are shown disabled in the popup. Null clears the bound. */
+    public void setMaxDate(LocalDate maxDate) {
+        this.maxDate = maxDate;
     }
 
     public String getText() {
@@ -147,6 +160,7 @@ public class DatePickerField extends JPanel {
         LocalDate today = LocalDate.now();
         for (int day = 1; day <= month.lengthOfMonth(); day++) {
             LocalDate date = month.atDay(day);
+            boolean disabled = (minDate != null && date.isBefore(minDate)) || (maxDate != null && date.isAfter(maxDate));
             JButton dayButton = new JButton(String.valueOf(day));
             dayButton.setFont(Theme.FONT_LABEL);
             dayButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
@@ -154,8 +168,9 @@ public class DatePickerField extends JPanel {
             dayButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
             boolean isSelected = date.equals(selected);
             dayButton.setBackground(isSelected ? Theme.NAVY : Theme.CARD_BG);
-            dayButton.setForeground(isSelected ? Color.WHITE : Theme.TEXT_PRIMARY);
+            dayButton.setForeground(disabled ? Theme.TEXT_MUTED : (isSelected ? Color.WHITE : Theme.TEXT_PRIMARY));
             dayButton.setBorder(new LineBorder(date.equals(today) ? Theme.BLUE_ACCENT : Theme.DIVIDER, 1));
+            dayButton.setEnabled(!disabled);
             dayButton.addActionListener(e -> {
                 setDate(date);
                 popup.setVisible(false);

@@ -56,6 +56,7 @@ public class AddEditMemberPanel extends JPanel {
         // in by hand; the list/detail views still show them read-only.
         txtAddress = field("Address:", 340, 42);
         txtJoinDate = dateField("Join Date:", 340, 92, DATE_FORMAT);
+        txtJoinDate.setMaxDate(LocalDate.now());
         txtEndDate = dateField("End Date:", 340, 142, DATE_FORMAT);
 
         // End Date defaults to a year after Join Date, and only opens up
@@ -65,6 +66,7 @@ public class AddEditMemberPanel extends JPanel {
         txtEndDate.setEnabled(false);
         txtJoinDate.setOnDateChanged(() -> {
             LocalDate join = txtJoinDate.getDate();
+            txtEndDate.setMinDate(join);
             if (join != null) {
                 txtEndDate.setDate(join.plusYears(1));
                 txtEndDate.setEnabled(true);
@@ -150,6 +152,7 @@ public class AddEditMemberPanel extends JPanel {
             txtJoinDate.setText("");
             txtEndDate.setText("");
             txtEndDate.setEnabled(false);
+            txtEndDate.setMinDate(null);
         } else {
             lblAddAndEditMembers.setText("EDIT MEMBER");
             txtMemberId.setText(member.getMemberId());
@@ -160,6 +163,7 @@ public class AddEditMemberPanel extends JPanel {
             txtJoinDate.setText(member.getJoinDate());
             txtEndDate.setText(member.getEndDate());
             txtEndDate.setEnabled(member.getJoinDate() != null && !member.getJoinDate().isEmpty());
+            txtEndDate.setMinDate(txtJoinDate.getDate());
         }
     }
 

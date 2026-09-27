@@ -1,5 +1,6 @@
 package lms.gui;
 
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import javax.swing.JLabel;
@@ -58,6 +59,7 @@ public class AddEditBookPanel extends JPanel {
         // field here -- see save() below for why.
         txtPublisher = field("Publisher:", 340, 42);
         txtPublicationDate = dateField("Publication Date:", 340, 92, DATE_FORMAT);
+        txtPublicationDate.setMaxDate(LocalDate.now());
         txtTotalCopies = field("Total Copies:", 340, 142);
         txtTags = field("Tags:", 340, 192);
         txtTags.setToolTipText("Comma-separated, e.g. cozy, mystery, sequel");
@@ -176,6 +178,11 @@ public class AddEditBookPanel extends JPanel {
         boolean isNew = (editingBook == null);
         Book book = isNew ? new Book() : editingBook;
 
+        // How many copies are currently checked out (0 for a brand-new
+        // book) -- captured before setTotalCopies() below overwrites the
+        // old total, so it can be carried over onto the new total.
+        int checkedOut = book.getTotalCopies() - book.getAvailableCopies();
+
         book.setIsbn(txtIsbn.getText().trim());
         book.setTitle(txtTitle.getText().trim());
         book.setAuthor(txtAuthor.getText().trim());
@@ -187,11 +194,12 @@ public class AddEditBookPanel extends JPanel {
 
         // Available Copies isn't a form field -- how many of a book are
         // actually on the shelf right now is what a borrowing system
-        // would own, not something to hand-type here. A new book starts
-        // fully available; editing an existing one just keeps whatever
-        // was already checked out, capped so it can't exceed the new
-        // total (e.g. if a copy was removed from the count).
-        book.setAvailableCopies(isNew ? totalCopies : Math.min(book.getAvailableCopies(), totalCopies));
+        // would own, not something to hand-type here. Instead, whatever
+        // was already checked out carries over onto the new total, so
+        // raising Total Copies raises Available Copies to match (the new
+        // copies start on the shelf) and lowering it lowers Available
+        // Copies too, never below 0.
+        book.setAvailableCopies(Math.max(0, totalCopies - checkedOut));
 
         if (isNew) {
             mainFrame.getLibrary().getBooks().add(book);
