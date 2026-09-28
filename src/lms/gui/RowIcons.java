@@ -194,6 +194,32 @@ final class RowIcons {
         };
     }
 
+    /** Three stacked bars (a "hamburger"), for the dashboard's menu button. */
+    static Icon menu(int size, Color color) {
+        return new Icon() {
+            @Override
+            public int getIconWidth() {
+                return size;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return size;
+            }
+
+            @Override
+            public void paintIcon(Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = begin(g, x, y);
+                g2.setColor(color);
+                int barH = Math.max(2, size / 8);
+                for (int i = 0; i < 3; i++) {
+                    g2.fillRoundRect(0, i * (size - barH) / 2, size, barH, barH, barH);
+                }
+                g2.dispose();
+            }
+        };
+    }
+
     /** Shared setup: a fresh Graphics2D translated to the icon's origin, antialiased. */
     private static Graphics2D begin(Graphics g, int x, int y) {
         Graphics2D g2 = (Graphics2D) g.create();

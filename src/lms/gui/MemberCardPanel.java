@@ -33,9 +33,9 @@ public class MemberCardPanel extends JPanel implements ListCellRenderer<Member> 
     private boolean selected;
 
     private final JLabel memberIdLabel = new JLabel();
-    private final JLabel nameLabel = new JLabel();
-    private final JLabel emailLabel = new JLabel();
-    private final JLabel phoneLabel = new JLabel();
+    private final JLabel nameLabel = new FitLabel().shrink(3);
+    private final JLabel emailLabel = new FitLabel();
+    private final JLabel phoneLabel = new FitLabel();
     private final JLabel bornLabel = new JLabel();
     private final JLabel borrowedLabel = new JLabel();
     private final JLabel overdueLabel = new JLabel();

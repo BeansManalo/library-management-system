@@ -139,7 +139,7 @@ public class BorrowBookPanel extends JPanel {
         place(banner, 0, 0, 640, 30);
         add(banner);
 
-        lblMember = new JLabel();
+        lblMember = new FitLabel().shrink(3);
         lblMember.setFont(Theme.FONT_CARD_TITLE);
         lblMember.setForeground(Theme.TEXT_PRIMARY);
         place(lblMember, 20, 36, 350, 22);

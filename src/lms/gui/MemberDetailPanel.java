@@ -190,7 +190,7 @@ public class MemberDetailPanel extends JPanel {
         int textX = CARD_X + 96;
         int textW = CARD_W - 96 - 18;
         nameLabel = faceLabel(frontFace, new Font("Arial", Font.BOLD, 17), Theme.TEXT_PRIMARY,
-            SwingConstants.LEFT, textX, CARD_Y + 46, textW, 24);
+            SwingConstants.LEFT, textX, CARD_Y + 46, textW, 24).shrink(6);
         idLabel = faceLabel(frontFace, Theme.FONT_CARD_SUB_BOLD, Theme.BLUE_ACCENT,
             SwingConstants.LEFT, textX, CARD_Y + 72, textW, 16);
         birthLabel = faceLabel(frontFace, Theme.FONT_CARD_SUB, Theme.TEXT_PRIMARY,
@@ -235,8 +235,9 @@ public class MemberDetailPanel extends JPanel {
     }
 
     /** A card label on the given face -- placed, added, and registered so showFace() can toggle it. */
-    private JLabel faceLabel(List<Component> face, Font font, Color color, int align, int x, int y, int w, int h) {
-        JLabel label = new JLabel("", align);
+    private FitLabel faceLabel(List<Component> face, Font font, Color color, int align, int x, int y, int w, int h) {
+        FitLabel label = new FitLabel();
+        label.setHorizontalAlignment(align);
         label.setFont(font);
         label.setForeground(color);
         place(label, x, y, w, h);
@@ -382,16 +383,16 @@ public class MemberDetailPanel extends JPanel {
     private static class RecordsRenderer implements ListCellRenderer<Object> {
         private static final Color LATE = Theme.ALERT;
 
-        private final JLabel dName = new JLabel();
+        private final JLabel dName = new FitLabel().shrink(4);
         private final JLabel dId = new JLabel();
-        private final JLabel dContact = new JLabel();
-        private final JLabel dAddress = new JLabel();
+        private final JLabel dContact = new FitLabel();
+        private final JLabel dAddress = new FitLabel();
         private final JPanel detailsRow = flat(new BorderLayout(10, 0));
 
         private final JLabel heading = new JLabel();
         private final JPanel headingRow = flat(new BorderLayout());
 
-        private final JLabel lTitle = new JLabel();
+        private final JLabel lTitle = new FitLabel().shrink(3);
         private final JLabel lSub = new JLabel();
         private final JLabel lStatus = new JLabel();
         private final JPanel loanRow = flat(new BorderLayout(8, 0));

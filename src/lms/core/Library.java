@@ -57,6 +57,14 @@ public class Library {
         return members;
     }
 
+    /** Replaces everything in this library with what {@code other} holds. */
+    public void replaceWith(Library other) {
+        books.clear();
+        books.addAll(other.books);
+        members.clear();
+        members.addAll(other.members);
+    }
+
     /**
      * Records the given loans against a member and takes the copies off
      * the shelf. Everything is checked first, so it's all-or-nothing: if

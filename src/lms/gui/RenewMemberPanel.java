@@ -54,7 +54,7 @@ public class RenewMemberPanel extends JPanel {
         place(banner, 0, 0, 640, 30);
         add(banner);
 
-        lblName = new JLabel();
+        lblName = new FitLabel().shrink(4);
         lblName.setFont(new Font("Arial", Font.BOLD, 14));
         lblName.setForeground(Theme.TEXT_PRIMARY);
         place(lblName, 20, 40, 600, 22);
@@ -157,6 +157,7 @@ public class RenewMemberPanel extends JPanel {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Cannot Renew", JOptionPane.WARNING_MESSAGE);
             return;
         }
+        mainFrame.saveLibrary();
         JOptionPane.showMessageDialog(this,
             "Membership renewed for " + member.getName() + ".\n\n"
                 + "New Member ID: " + member.getMemberId() + "\n"

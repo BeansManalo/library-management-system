@@ -229,6 +229,7 @@ public class AddEditMemberPanel extends JPanel {
         // shared list, so the setters above already updated it in place --
         // no separate "replace in list" step is needed.
 
+        mainFrame.saveLibrary();
         mainFrame.showCard(MainFrame.CARD_MEMBER_LIST);
     }
 

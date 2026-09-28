@@ -6,18 +6,25 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
 import javax.swing.AbstractAction;
 import javax.swing.JComponent;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import lms.core.Book;
 import lms.core.Library;
 import lms.core.Loan;
 import lms.core.Member;
+import lms.core.Storage;
+import lms.core.ValidationException;
 
 @SuppressWarnings("serial")
 public class MainFrame extends JFrame {
@@ -151,6 +158,15 @@ public class MainFrame extends JFrame {
 
         getAccessibleContext().setAccessibleDescription("");
         pack();
+
+        try {
+            Library saved = Storage.load();
+            if (saved != null) {
+                library.replaceWith(saved);
+            }
+        } catch (ValidationException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Load Failed", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     /**
@@ -189,6 +205,80 @@ public class MainFrame extends JFrame {
     /** The one shared Book/Member store for the whole app. */
     public Library getLibrary() {
         return library;
+    }
+
+    /** Writes the library to its permanent save location. Called after every change. */
+    public void saveLibrary() {
+        try {
+            Storage.save(library);
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "The library couldn't be saved: " + e.getMessage(),
+                "Save Failed", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /** Menu > Save Library: writes a standalone copy of the library to a file the user picks. */
+    public void exportLibrary() {
+        JFileChooser chooser = libraryChooser();
+        chooser.setSelectedFile(new File("library.lms"));
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        Path file = chooser.getSelectedFile().toPath();
+        if (!file.getFileName().toString().toLowerCase().endsWith(".lms")) {
+            file = file.resolveSibling(file.getFileName() + ".lms");
+        }
+        try {
+            Storage.export(library, file);
+            JOptionPane.showMessageDialog(this, "Library saved to " + file, "Save Library", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "The library couldn't be saved: " + e.getMessage(),
+                "Save Failed", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /**
+     * Menu > Load Library: checks a library file and, if it's proper, makes it
+     * the library (the default save file is overwritten and the autosaves go).
+     */
+    public void importLibrary() {
+        if (JOptionPane.showConfirmDialog(this,
+                "Loading a library replaces the current one and clears its autosaves. Continue?",
+                "Load Library", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION) {
+            return;
+        }
+        JFileChooser chooser = libraryChooser();
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        try {
+            library.replaceWith(Storage.importFile(chooser.getSelectedFile().toPath()));
+            JOptionPane.showMessageDialog(this, "Library loaded.", "Load Library", JOptionPane.INFORMATION_MESSAGE);
+        } catch (ValidationException | IOException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Cannot Load", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /** Menu > Delete Library: erases the save file and every autosave, and empties the library. */
+    public void deleteLibrary() {
+        if (JOptionPane.showConfirmDialog(this,
+                "Delete the whole library and all its autosaves? This can't be undone.",
+                "Delete Library", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION) {
+            return;
+        }
+        try {
+            Storage.delete();
+            library.replaceWith(new Library());
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "The library couldn't be deleted: " + e.getMessage(),
+                "Delete Failed", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private JFileChooser libraryChooser() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileFilter(new FileNameExtensionFilter("LeMon.S library (*.lms)", "lms"));
+        return chooser;
     }
 
     /**
@@ -251,6 +341,7 @@ public class MainFrame extends JFrame {
                 JOptionPane.YES_NO_OPTION);
             if (choice == JOptionPane.YES_OPTION) {
                 library.getMembers().remove(member);
+                saveLibrary();
                 showCard(CARD_MEMBER_LIST);
             }
             return;

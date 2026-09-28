@@ -40,10 +40,10 @@ public class BookCardPanel extends JPanel implements ListCellRenderer<Book> {
     private boolean selected;
 
     private final JLabel isbnLabel = new JLabel();
-    private final JLabel titleLabel = new JLabel();
-    private final JLabel authorLabel = new JLabel();
-    private final JLabel genreLabel = new JLabel();
-    private final JLabel publisherLabel = new JLabel();
+    private final JLabel titleLabel = new FitLabel().shrink(3);
+    private final JLabel authorLabel = new FitLabel();
+    private final JLabel genreLabel = new FitLabel();
+    private final JLabel publisherLabel = new FitLabel();
     private final JLabel dateLabel = new JLabel();
     private final JLabel ownedValue = new JLabel();
     private final JLabel availableValue = new JLabel();
@@ -120,9 +120,12 @@ public class BookCardPanel extends JPanel implements ListCellRenderer<Book> {
         stack.add(publisherLabel);
         stack.add(dateLabel);
 
+        // Centered (not EAST) so a long publisher is cut short instead of sprawling
+        // left; the inset keeps it out from under the cover glyph and stat column.
         JPanel row = new JPanel(new BorderLayout());
         row.setOpaque(false);
-        row.add(stack, BorderLayout.EAST);
+        row.setBorder(new EmptyBorder(0, 100, 0, 0));
+        row.add(stack, BorderLayout.CENTER);
         return row;
     }
 

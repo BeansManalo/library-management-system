@@ -51,7 +51,7 @@ public class BookDetailPanel extends JPanel {
         place(icon, 30, 44, 56, 56);
         add(icon);
 
-        titleLabel = new JLabel();
+        titleLabel = new FitLabel().shrink(6);
         titleLabel.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 18));
         titleLabel.setForeground(Theme.TEXT_PRIMARY);
         place(titleLabel, 100, 44, 420, 26);

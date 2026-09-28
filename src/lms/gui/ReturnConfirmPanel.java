@@ -81,7 +81,7 @@ public class ReturnConfirmPanel extends JPanel {
         place(banner, 0, 0, 640, 30);
         add(banner);
 
-        lblName = new JLabel();
+        lblName = new FitLabel().shrink(4);
         lblName.setFont(new Font("Arial", Font.BOLD, 14));
         lblName.setForeground(Theme.TEXT_PRIMARY);
         place(lblName, 20, 38, 600, 22);
@@ -168,6 +168,7 @@ public class ReturnConfirmPanel extends JPanel {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Cannot Return", JOptionPane.ERROR_MESSAGE);
             return;
         }
+        mainFrame.saveLibrary();
         JOptionPane.showMessageDialog(this, "Return recorded.", "Return Book", JOptionPane.INFORMATION_MESSAGE);
         mainFrame.showCard(MainFrame.CARD_DASHBOARD);
     }

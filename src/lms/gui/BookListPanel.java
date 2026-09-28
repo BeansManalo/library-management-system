@@ -255,6 +255,7 @@ public class BookListPanel extends JPanel {
             JOptionPane.YES_NO_OPTION);
         if (choice == JOptionPane.YES_OPTION) {
             mainFrame.getLibrary().getBooks().remove(selected);
+            mainFrame.saveLibrary();
             refresh();
         }
     }
