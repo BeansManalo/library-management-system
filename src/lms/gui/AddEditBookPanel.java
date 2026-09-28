@@ -1,6 +1,5 @@
 package lms.gui;
 
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import javax.swing.JLabel;
@@ -8,6 +7,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import lms.core.Book;
+import lms.core.Library;
 import lms.core.ValidationException;
 
 @SuppressWarnings("serial")
@@ -64,7 +64,6 @@ public class AddEditBookPanel extends JPanel {
         // field here -- see save() below for why.
         txtPublisher = field("Publisher:", 340, 42);
         txtPublicationDate = dateField("Publication Date:", 340, 92, DATE_FORMAT);
-        txtPublicationDate.setMaxDate(LocalDate.now());
         txtTotalCopies = field("Total Copies:", 340, 142);
         txtTags = field("Tags:", 340, 192);
         txtTags.setToolTipText("Comma-separated, e.g. cozy, mystery, sequel");
@@ -140,6 +139,7 @@ public class AddEditBookPanel extends JPanel {
      */
     public void loadBook(Book book) {
         editingBook = book;
+        txtPublicationDate.setMaxDate(Library.today());
 
         if (book == null) {
             lblAddAndEditBooks.setText("ADD BOOK");

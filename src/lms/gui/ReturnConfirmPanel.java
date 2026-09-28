@@ -17,8 +17,8 @@ import lms.core.ValidationException;
 
 /**
  * Step 3 of returning, mirroring BorrowConfirmPanel: a summary of who is
- * returning what, and which copies came back late (each late line costs
- * a penalty). Nothing is recorded until ACCEPT, and both ACCEPT and
+ * returning what, and which copies are coming back late. Nothing is
+ * recorded until ACCEPT, and both ACCEPT and
  * DECLINE ask once more before doing anything. BACK returns to the
  * return screen with everything still in it.
  */
@@ -67,7 +67,7 @@ public class ReturnConfirmPanel extends JPanel {
                 case 0 -> line.loan().getBook().getTitle();
                 case 1 -> line.quantity();
                 case 2 -> Member.DATE_FORMAT.format(line.loan().getDueDate());
-                default -> isLate(line) ? "Late \u2022 penalty" : "On time";
+                default -> isLate(line) ? "Late" : "On time";
             };
         }
     };
@@ -147,7 +147,7 @@ public class ReturnConfirmPanel extends JPanel {
             + (member.getContactNumber() == null || member.getContactNumber().isEmpty() ? "\u2014" : member.getContactNumber()));
         lblDate.setText("Return date: " + Member.DATE_FORMAT.format(returnDate));
         lblTotals.setText(books + " book(s)  \u2022  " + titles + " title(s)"
-            + (late > 0 ? "  \u2022  " + late + " late (penalty)" : ""));
+            + (late > 0 ? "  \u2022  " + late + " late" : ""));
         model.fireTableDataChanged();
     }
 

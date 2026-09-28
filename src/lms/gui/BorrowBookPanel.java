@@ -23,6 +23,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.AbstractTableModel;
 import lms.core.Book;
+import lms.core.Library;
 import lms.core.Loan;
 import lms.core.Member;
 
@@ -265,9 +266,8 @@ public class BorrowBookPanel extends JPanel {
      * doesn't open.
      */
     public boolean startFor(Member member) {
-        LocalDate today = LocalDate.now();
-        LocalDate ended = member.getEndLocalDate();
-        if (ended != null && ended.isBefore(today)) {
+        LocalDate today = Library.today();
+        if (member.isExpired()) {
             JOptionPane.showMessageDialog(this,
                 member.getName() + "'s membership ended on " + member.getEndDate() + ".\n"
                     + "Renew it under Add / Edit Members before borrowing.",
@@ -293,7 +293,7 @@ public class BorrowBookPanel extends JPanel {
 
     /** About a week after the borrow date, but never earlier than today. */
     private LocalDate defaultReturnDate() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = Library.today();
         LocalDate borrowed = txtBorrowDate.getDate();
         LocalDate due = (borrowed == null ? today : borrowed).plusDays(Loan.DEFAULT_LOAN_DAYS);
         return due.isBefore(today) ? today : due;

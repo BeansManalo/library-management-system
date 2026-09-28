@@ -30,6 +30,7 @@ import javax.swing.SwingConstants;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
+import lms.core.Library;
 import lms.core.Loan;
 import lms.core.Member;
 
@@ -49,9 +50,10 @@ import lms.core.Member;
  * on window resize (a nested panel with its own layout wouldn't).
  *
  * A second toggle (BOOKS / ID) swaps the whole card for a scrollable
- * record of what this member has borrowed: the same details at the top,
- * then every loan grouped under the day it was borrowed, each with its
- * own return date and status (including a penalty flag for late returns).
+ * list of the books this member has out right now (nothing already
+ * returned): the same details at the top, then an "Overdue Books" section
+ * for anything past its return date, then the rest grouped under the day
+ * they were borrowed, each with its return date and status.
  * The card is compact on its two ID faces and grows taller for that list.
  */
 @SuppressWarnings("serial")
@@ -293,9 +295,16 @@ public class MemberDetailPanel extends JPanel {
         loadRecords(member);
     }
 
-    /** Rebuilds the borrowed-books list: details first, then loans newest-first, grouped by borrow date. */
+    /**
+     * Rebuilds the borrowed-books list: details first, then the Overdue Books
+     * section (only if there are any), then every other loan still out
+     * newest-first, grouped by borrow date. Returned loans are history and
+     * never listed.
+     */
     private void loadRecords(Member member) {
-        List<Loan> loans = new ArrayList<>(member.getLoans());
+        List<Loan> overdue = member.getOverdueLoans();
+        List<Loan> loans = member.getOutstandingLoans();
+        loans.removeAll(overdue); // overdue loans are listed in their own section instead
         loans.sort(Comparator.comparing(Loan::getBorrowDate, Comparator.reverseOrder()));
         Map<LocalDate, Integer> booksPerDay = new LinkedHashMap<>();
         for (Loan loan : loans) {
@@ -304,8 +313,12 @@ public class MemberDetailPanel extends JPanel {
 
         List<Object> items = new ArrayList<>();
         items.add(member); // shown as the details block at the top
-        if (loans.isEmpty()) {
-            items.add("No books borrowed yet.");
+        if (!overdue.isEmpty()) {
+            items.add(new Heading("OVERDUE BOOKS   \u2022   " + member.getOverdueBooks() + " book(s)", true));
+            items.addAll(overdue);
+        }
+        if (overdue.isEmpty() && loans.isEmpty()) {
+            items.add("No books currently borrowed.");
         }
         LocalDate day = null;
         for (Loan loan : loans) {
@@ -363,11 +376,11 @@ public class MemberDetailPanel extends JPanel {
     /**
      * Draws the borrowed-books list. One instance is reused for every
      * row (like BookCardPanel/MemberCardPanel), and each row is one of
-     * three kinds: the member's details (first row), a text heading for
-     * a borrow date, or a single loan.
+     * three kinds: the member's details (first row), a text heading (a
+     * borrow date, or the red Overdue Books one), or a single loan.
      */
     private static class RecordsRenderer implements ListCellRenderer<Object> {
-        private static final Color LATE = new Color(0xA5, 0x33, 0x33);
+        private static final Color LATE = Theme.ALERT;
 
         private final JLabel dName = new JLabel();
         private final JLabel dId = new JLabel();
@@ -449,16 +462,17 @@ public class MemberDetailPanel extends JPanel {
             }
             if (value instanceof Loan loan) {
                 lTitle.setText(text(loan.getBook().getTitle()) + "   \u00D7" + loan.getQuantity());
-                Loan.Status status = loan.getStatus(LocalDate.now());
+                LocalDate today = Library.today();
+                Loan.Status status = loan.getStatus(today);
                 String due = Member.DATE_FORMAT.format(loan.getDueDate());
-                lSub.setText(loan.isReturned()
-                    ? "Returned " + Member.DATE_FORMAT.format(loan.getReturnDate()) + "  (due " + due + ")"
+                lSub.setText(loan.isOverdue(today)
+                    ? "Due " + due + "   \u2022   " + loan.getDaysOverdue(today) + " day(s) overdue"
                     : "Return by " + due);
                 lStatus.setText(switch (status) {
                     case BORROWED -> "BORROWED";
                     case OVERDUE -> "OVERDUE";
                     case RETURNED -> "RETURNED";
-                    case RETURNED_LATE -> "RETURNED LATE \u2022 PENALTY";
+                    case RETURNED_LATE -> "RETURNED LATE";
                 });
                 lStatus.setForeground(switch (status) {
                     case BORROWED -> Theme.BLUE_ACCENT;
@@ -467,10 +481,19 @@ public class MemberDetailPanel extends JPanel {
                 });
                 return loanRow;
             }
+            if (value instanceof Heading h) {
+                heading.setText(h.text());
+                heading.setForeground(h.alert() ? LATE : Theme.TEXT_PRIMARY);
+                return headingRow;
+            }
             heading.setText(String.valueOf(value));
+            heading.setForeground(Theme.TEXT_PRIMARY);
             return headingRow;
         }
     }
+
+    /** A list heading that can be flagged red -- used for the Overdue Books section. */
+    private record Heading(String text, boolean alert) { }
 
     /**
      * The card face: white fading to a pale blue, a navy header strip with

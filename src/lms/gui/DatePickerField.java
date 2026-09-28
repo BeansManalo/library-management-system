@@ -23,6 +23,7 @@ import javax.swing.SwingConstants;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
+import lms.core.Library;
 
 /**
  * A text field plus a small calendar button that opens a popup date
@@ -133,7 +134,7 @@ public class DatePickerField extends JPanel {
 
     private void showPopup(JButton anchor) {
         LocalDate current = getDate();
-        YearMonth month = current != null ? YearMonth.from(current) : YearMonth.now();
+        YearMonth month = current != null ? YearMonth.from(current) : YearMonth.from(Library.today());
 
         JPopupMenu popup = new JPopupMenu();
         popup.setBorder(new LineBorder(Theme.DIVIDER, 1));
@@ -172,7 +173,7 @@ public class DatePickerField extends JPanel {
         for (int i = 0; i < leadingBlanks; i++) {
             grid.add(new JLabel(""));
         }
-        LocalDate today = LocalDate.now();
+        LocalDate today = Library.today();
         for (int day = 1; day <= month.lengthOfMonth(); day++) {
             LocalDate date = month.atDay(day);
             boolean disabled = (minDate != null && date.isBefore(minDate)) || (maxDate != null && date.isAfter(maxDate));
@@ -212,7 +213,7 @@ public class DatePickerField extends JPanel {
         next.addActionListener(e -> swap(popup, buildMonthView(year + 1, selected, popup)));
         root.add(popupHeader(prev, heading, next), BorderLayout.NORTH);
 
-        YearMonth thisMonth = YearMonth.now();
+        YearMonth thisMonth = YearMonth.from(Library.today());
         JPanel grid = new JPanel(new GridLayout(3, 4, 4, 4));
         grid.setOpaque(false);
         for (int m = 1; m <= 12; m++) {
@@ -248,7 +249,7 @@ public class DatePickerField extends JPanel {
         next.addActionListener(e -> swap(popup, buildYearView(pageStart + YEAR_PAGE_SIZE, selected, popup)));
         root.add(popupHeader(prev, heading, next), BorderLayout.NORTH);
 
-        int thisYear = LocalDate.now().getYear();
+        int thisYear = Library.today().getYear();
         JPanel grid = new JPanel(new GridLayout(3, 4, 4, 4));
         grid.setOpaque(false);
         for (int y = pageStart; y <= pageEnd; y++) {

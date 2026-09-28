@@ -20,7 +20,7 @@ import lms.core.Member;
  * One row of the Member List screen: avatar glyph, name/email/phone, the
  * member ID alone in the top-right corner, join/end dates on the left,
  * and the date of birth in the bottom-left, facing the books-borrowed/
- * penalties pair in the bottom-right -- out of the way of the contact
+ * overdue-books pair in the bottom-right -- out of the way of the contact
  * details, and a labelled field like the ones opposite it.
  *
  * Mirrors BookCardPanel's structure and, like it, is built once and
@@ -38,7 +38,7 @@ public class MemberCardPanel extends JPanel implements ListCellRenderer<Member> 
     private final JLabel phoneLabel = new JLabel();
     private final JLabel bornLabel = new JLabel();
     private final JLabel borrowedLabel = new JLabel();
-    private final JLabel penaltiesLabel = new JLabel();
+    private final JLabel overdueLabel = new JLabel();
     private final JLabel joinValue = new JLabel();
     private final JLabel endValue = new JLabel();
 
@@ -105,13 +105,13 @@ public class MemberCardPanel extends JPanel implements ListCellRenderer<Member> 
         borrowedLabel.setFont(Theme.FONT_CARD_ITALIC);
         borrowedLabel.setForeground(Theme.TEXT_PRIMARY);
 
-        penaltiesLabel.setHorizontalAlignment(SwingConstants.RIGHT);
-        penaltiesLabel.setFont(Theme.FONT_CARD_ITALIC);
+        overdueLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+        overdueLabel.setFont(Theme.FONT_CARD_ITALIC);
 
         JPanel stack = new JPanel(new GridLayout(2, 1));
         stack.setOpaque(false);
         stack.add(borrowedLabel);
-        stack.add(penaltiesLabel);
+        stack.add(overdueLabel);
 
         // Bottom-aligned so it sits level with the last line opposite it,
         // and inset to line up under the avatar above.
@@ -136,10 +136,13 @@ public class MemberCardPanel extends JPanel implements ListCellRenderer<Member> 
         phoneLabel.setText(text(member.getContactNumber()));
         bornLabel.setText("Date of Birth: " + text(member.getBirthDate()));
         borrowedLabel.setText("Books Borrowed: " + member.getBooksBorrowed());
-        penaltiesLabel.setText("Penalties: " + member.getPenalties());
-        penaltiesLabel.setForeground(member.getPenalties() > 0 ? Theme.NAVY : Theme.TEXT_MUTED);
+        int overdue = member.getOverdueBooks();
+        overdueLabel.setText("Overdue Books: " + overdue);
+        overdueLabel.setForeground(overdue > 0 ? Theme.ALERT : Theme.TEXT_MUTED);
         joinValue.setText(text(member.getJoinDate()));
         endValue.setText(text(member.getEndDate()));
+        // An expired membership shows its end date in red (this one label is reused for every row).
+        endValue.setForeground(member.isExpired() ? Theme.ALERT : Theme.TEXT_PRIMARY);
     }
 
     private static String text(String value) {

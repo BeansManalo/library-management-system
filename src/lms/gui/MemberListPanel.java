@@ -29,12 +29,14 @@ public class MemberListPanel extends JPanel {
     private PillButton btnView;
     private PillButton btnAddNew;
     private PillButton btnDelete;
+    private PillButton btnRenew;
 
     /**
      * The three roles this one screen plays: LIST is the plain read-only
      * browse/search role (double-click opens the Member Details viewer),
      * MANAGE is "Add / Edit Members" (Add New + Delete visible, opens the
-     * editable form), PICK is the first step of borrowing a book -- the
+     * editable form, and Renew appears for a member whose membership has
+     * expired), PICK is the first step of borrowing a book -- the
      * very same list, but choosing a row hands that member to the borrow
      * screen -- and RETURN is the same for returning, where only members
      * who have books out are listed. See MainFrame.showMemberList() /
@@ -136,6 +138,13 @@ public class MemberListPanel extends JPanel {
             }
         });
 
+        // RENEW only shows for an expired member, so it follows the selection.
+        memberList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                updateRenewButton();
+            }
+        });
+
         JScrollPane scrollPane = new JScrollPane(memberList);
         scrollPane.setBorder(new LineBorder(Theme.DIVIDER, 1));
         scrollPane.getVerticalScrollBar().setUnitIncrement(24);
@@ -180,6 +189,17 @@ public class MemberListPanel extends JPanel {
         btnDelete.addActionListener(e -> deleteSelectedMember());
         add(btnDelete);
 
+        // Only ever visible for a member whose membership has ended -- see updateRenewButton().
+        btnRenew = new PillButton("RENEW");
+        place(btnRenew, 460, 186, 150, 30);
+        btnRenew.addActionListener(e -> {
+            Member selected = getSelectedMember();
+            if (selected != null) {
+                mainFrame.showMemberRenew(selected);
+            }
+        });
+        add(btnRenew);
+
         PillButton btnBack = new PillButton("BACK");
         place(btnBack, 270, 300, 100, 28);
         btnBack.addActionListener(e -> mainFrame.showCard(MainFrame.CARD_DASHBOARD));
@@ -200,6 +220,13 @@ public class MemberListPanel extends JPanel {
         btnView.setText(mode == Mode.MANAGE ? "EDIT" : choosing ? "SELECT" : "VIEW");
         btnAddNew.setVisible(mode == Mode.MANAGE);
         btnDelete.setVisible(mode == Mode.MANAGE);
+        updateRenewButton();
+    }
+
+    /** RENEW is offered only in the management role, and only for a selected member whose membership has expired. */
+    private void updateRenewButton() {
+        Member selected = memberList.getSelectedValue();
+        btnRenew.setVisible(mode == Mode.MANAGE && selected != null && selected.isExpired());
     }
 
     /**
@@ -224,6 +251,7 @@ public class MemberListPanel extends JPanel {
         // view (see the cell renderer set up above).
         memberList.setListData(displayedMembers.toArray(new Member[0]));
         memberList.clearSelection();
+        updateRenewButton();
     }
 
     /** Double-click target: depends on the current role (see {@link Mode}). */
@@ -249,26 +277,15 @@ public class MemberListPanel extends JPanel {
         return field != null && field.toLowerCase().contains(query);
     }
 
-    /** Removes the selected row from the library, after confirming with the user. */
+    /**
+     * Deletes the selected member. A member with nothing out is just
+     * confirmed and removed; one who still has books out goes through the
+     * returned-or-lost process first -- see MainFrame.showMemberDelete().
+     */
     private void deleteSelectedMember() {
         Member selected = getSelectedMember();
-        if (selected == null) {
-            return;
-        }
-        if (selected.getBooksBorrowed() > 0) {
-            JOptionPane.showMessageDialog(this,
-                selected.getName() + " still has " + selected.getBooksBorrowed() + " borrowed book(s).\nThey can be deleted once everything is returned.",
-                "Cannot Delete", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        int choice = JOptionPane.showConfirmDialog(this,
-            "Delete \"" + selected.getName() + "\"?",
-            "Confirm Delete",
-            JOptionPane.YES_NO_OPTION);
-        if (choice == JOptionPane.YES_OPTION) {
-            mainFrame.getLibrary().getMembers().remove(selected);
-            refresh();
+        if (selected != null) {
+            mainFrame.showMemberDelete(selected);
         }
     }
 

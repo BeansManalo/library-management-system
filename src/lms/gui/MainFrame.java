@@ -3,10 +3,17 @@ package lms.gui;
 import java.awt.CardLayout;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.time.LocalDate;
 import java.util.List;
+import javax.swing.AbstractAction;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 import lms.core.Book;
 import lms.core.Library;
 import lms.core.Loan;
@@ -29,9 +36,16 @@ public class MainFrame extends JFrame {
     public static final String CARD_RETURN_BOOK = "RETURN_BOOK";
     public static final String CARD_BORROW_CONFIRM = "BORROW_CONFIRM";
     public static final String CARD_RETURN_CONFIRM = "RETURN_CONFIRM";
+    public static final String CARD_RENEW_MEMBER = "RENEW_MEMBER";
+    public static final String CARD_DELETE_MEMBER = "DELETE_MEMBER";
+
+    // Dev mode is hidden: Ctrl+Alt+Shift+D on the Dashboard, then this passcode
+    // (see openDevMode()). Change it here.
+    private static final String DEV_PASSCODE = "lms-dev";
 
     private JPanel contentPane;
     private CardLayout cardLayout;
+    private boolean devMode; // unlocked for this run only
 
     // The single shared data store every panel reads from and writes to.
     private final Library library = new Library();
@@ -39,6 +53,7 @@ public class MainFrame extends JFrame {
     // Kept as fields (not just constructor-local) so showCard() and the
     // showXxxForm()/showXxxDetail() helpers below can reach them after
     // construction.
+    private DashboardPanel dashboardPanel;
     private BookListPanel bookListPanel;
     private MemberListPanel memberListPanel;
     private AddEditBookPanel addEditBookPanel;
@@ -49,6 +64,8 @@ public class MainFrame extends JFrame {
     private ReturnBookPanel returnBookPanel;
     private BorrowConfirmPanel borrowConfirmPanel;
     private ReturnConfirmPanel returnConfirmPanel;
+    private RenewMemberPanel renewMemberPanel;
+    private DeleteMemberPanel deleteMemberPanel;
 
     /**
      * Create the frame.
@@ -69,7 +86,7 @@ public class MainFrame extends JFrame {
         contentPane.setBackground(Theme.APP_BG);
         setContentPane(contentPane);
 
-        DashboardPanel dashboardPanel = new DashboardPanel();
+        dashboardPanel = new DashboardPanel();
         dashboardPanel.setMainFrame(this);
         contentPane.add(dashboardPanel, CARD_DASHBOARD);
 
@@ -113,10 +130,60 @@ public class MainFrame extends JFrame {
         returnConfirmPanel.setMainFrame(this);
         contentPane.add(returnConfirmPanel, CARD_RETURN_CONFIRM);
 
+        renewMemberPanel = new RenewMemberPanel();
+        renewMemberPanel.setMainFrame(this);
+        contentPane.add(renewMemberPanel, CARD_RENEW_MEMBER);
+
+        deleteMemberPanel = new DeleteMemberPanel();
+        deleteMemberPanel.setMainFrame(this);
+        contentPane.add(deleteMemberPanel, CARD_DELETE_MEMBER);
+
         cardLayout.show(contentPane, CARD_DASHBOARD);
+
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_D,
+            InputEvent.CTRL_DOWN_MASK | InputEvent.ALT_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK), "devMode");
+        getRootPane().getActionMap().put("devMode", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                openDevMode();
+            }
+        });
 
         getAccessibleContext().setAccessibleDescription("");
         pack();
+    }
+
+    /**
+     * Hidden dev mode. Only works while the Dashboard is showing: the shortcut
+     * asks for the passcode, and a wrong or cancelled one does nothing at all.
+     * Once unlocked (until the app closes) the shortcut goes straight to the
+     * dev tools. For now the only tool is changing the library's "today" --
+     * see Library.today().
+     */
+    private void openDevMode() {
+        if (!dashboardPanel.isShowing()) {
+            return;
+        }
+        if (!devMode) {
+            String entered = JOptionPane.showInputDialog(this, "Passcode:", "Dev Mode", JOptionPane.PLAIN_MESSAGE);
+            if (!DEV_PASSCODE.equals(entered)) {
+                return;
+            }
+            devMode = true;
+        }
+        DatePickerField picker = new DatePickerField(Member.DATE_FORMAT);
+        picker.setDate(Library.today());
+        String[] options = {"Set date", "Use real date", "Close"};
+        int choice = JOptionPane.showOptionDialog(this,
+            new Object[] {"The library's \"today\" (drives overdue and membership expiry):", picker},
+            "Dev Mode", JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
+        if (choice == 0) {
+            Library.setToday(picker.getDate());
+        } else if (choice == 1) {
+            Library.setToday(null);
+        }
+        // A fake date must never go unnoticed while testing.
+        setTitle("Library Management System  [DEV MODE \u2022 today is " + Member.DATE_FORMAT.format(Library.today()) + "]");
     }
 
     /** The one shared Book/Member store for the whole app. */
@@ -160,6 +227,36 @@ public class MainFrame extends JFrame {
     public void showMemberForm(Member memberToEdit) {
         addEditMemberPanel.loadMember(memberToEdit);
         showCard(CARD_ADD_EDIT_MEMBER);
+    }
+
+    /** Opens the Renew Membership screen for a member whose membership has expired. */
+    public void showMemberRenew(Member member) {
+        if (!member.isExpired()) {
+            return; // renewal is only ever offered once the membership has ended
+        }
+        renewMemberPanel.startFor(member);
+        showCard(CARD_RENEW_MEMBER);
+    }
+
+    /**
+     * Permanently deletes a member. With nothing borrowed it's just a
+     * confirmation; with books still out, each copy has to be settled as
+     * returned or permanently lost first, on the Delete Member screen.
+     */
+    public void showMemberDelete(Member member) {
+        if (member.getOutstandingLoans().isEmpty()) {
+            int choice = JOptionPane.showConfirmDialog(this,
+                "Delete \"" + member.getName() + "\"?",
+                "Confirm Delete",
+                JOptionPane.YES_NO_OPTION);
+            if (choice == JOptionPane.YES_OPTION) {
+                library.getMembers().remove(member);
+                showCard(CARD_MEMBER_LIST);
+            }
+            return;
+        }
+        deleteMemberPanel.startFor(member);
+        showCard(CARD_DELETE_MEMBER);
     }
 
     /** Opens the Book List in its plain, read-only browse/search role. */

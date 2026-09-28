@@ -17,6 +17,7 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.table.AbstractTableModel;
 import lms.core.Library.Return;
+import lms.core.Library;
 import lms.core.Loan;
 import lms.core.Member;
 
@@ -77,7 +78,7 @@ public class ReturnBookPanel extends JPanel {
                 case 0 -> loan.getBook().getTitle();
                 case 1 -> remaining(loan);
                 default -> Member.DATE_FORMAT.format(loan.getDueDate())
-                    + (loan.getStatus(LocalDate.now()) == Loan.Status.OVERDUE ? "  (overdue)" : "");
+                    + (loan.getStatus(Library.today()) == Loan.Status.OVERDUE ? "  (overdue)" : "");
             };
         }
     };
@@ -221,7 +222,7 @@ public class ReturnBookPanel extends JPanel {
      * membership check, unlike borrowing: books can always come back.)
      */
     public void startFor(Member member) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = Library.today();
         this.member = member;
         basket.clear();
         outstanding = member.getLoans().stream().filter(loan -> !loan.isReturned()).toList();

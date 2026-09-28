@@ -6,6 +6,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import lms.core.Library;
 import lms.core.Member;
 import lms.core.ValidationException;
 
@@ -59,17 +60,15 @@ public class AddEditMemberPanel extends JPanel {
         txtFirstName = field("First Name:", 40, 92, 120);
         txtLastName = field("Last Name:", 170, 92, 130);
         txtBirthDate = dateField("Birth Date:", 40, 142, DATE_FORMAT);
-        txtBirthDate.setMaxDate(LocalDate.now());
         txtContactNumber = field("Contact Number:", 40, 192);
 
         // Right column: how to reach them and their membership window.
-        // Books Borrowed / Penalties are intentionally not here -- those
+        // Books Borrowed / Overdue Books are intentionally not here -- those
         // will belong to a future borrowing system, not something typed
         // in by hand; the list/detail views still show them read-only.
         txtEmail = field("Email:", 340, 42);
         txtAddress = field("Address:", 340, 92);
         txtJoinDate = dateField("Join Date:", 340, 142, DATE_FORMAT);
-        txtJoinDate.setMaxDate(LocalDate.now());
         txtEndDate = dateField("End Date:", 340, 192, DATE_FORMAT);
 
         // End Date defaults to a year after Join Date, and only opens up
@@ -159,6 +158,8 @@ public class AddEditMemberPanel extends JPanel {
      */
     public void loadMember(Member member) {
         editingMember = member;
+        txtBirthDate.setMaxDate(Library.today());
+        txtJoinDate.setMaxDate(Library.today());
 
         if (member == null) {
             lblAddAndEditMembers.setText("ADD MEMBER");
@@ -217,7 +218,7 @@ public class AddEditMemberPanel extends JPanel {
         member.setAddress(txtAddress.getText().trim());
         member.setJoinDate(txtJoinDate.getText().trim());
         member.setEndDate(txtEndDate.getText().trim());
-        // Books Borrowed / Penalties aren't form fields -- Member works
+        // Books Borrowed / Overdue Books aren't form fields -- Member works
         // them out from its loans, so a new member starts at zero and an
         // edited one keeps its history.
 

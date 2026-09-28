@@ -34,6 +34,8 @@ final class Theme {
     static final Color CHIP_BG = new Color(0xE7, 0xED, 0xF4);
     static final Color TEXT_PRIMARY = new Color(0x1B, 0x2A, 0x3A);
     static final Color TEXT_MUTED = new Color(0x63, 0x72, 0x83);
+    // Overdue books, expired memberships, lost copies -- anything that needs attention.
+    static final Color ALERT = new Color(0xA5, 0x33, 0x33);
 
     // -- Fonts (Arial everywhere, per the request) ----------------------
     static final Font FONT_BANNER = new Font("Arial", Font.BOLD, 14);

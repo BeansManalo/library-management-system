@@ -5,13 +5,14 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 /**
  * A registered library member.
  * Plain data holder (POJO), same shape as {@link Book} -- getters and
  * setters only, so it stays easy to swap for a database-backed row later.
- * The one exception: books borrowed and penalties aren't stored, they're
+ * The one exception: books borrowed and overdue books aren't stored, they're
  * worked out from the member's loans so they can never drift out of sync.
  */
 public class Member {
@@ -129,15 +130,47 @@ public class Member {
         return total;
     }
 
-    /** Late returns so far: one penalty per loan that came back after its due date. */
-    public int getPenalties() {
-        int total = 0;
+    /** Loans that haven't come back yet, in the order they were recorded. */
+    public List<Loan> getOutstandingLoans() {
+        List<Loan> outstanding = new ArrayList<>();
         for (Loan loan : loans) {
-            if (loan.isPenalized()) {
-                total++;
+            if (!loan.isReturned()) {
+                outstanding.add(loan);
             }
         }
+        return outstanding;
+    }
+
+    /** The loans this member still has out that are past their due date, longest overdue first. */
+    public List<Loan> getOverdueLoans() {
+        LocalDate today = Library.today();
+        List<Loan> overdue = new ArrayList<>();
+        for (Loan loan : loans) {
+            if (loan.isOverdue(today)) {
+                overdue.add(loan);
+            }
+        }
+        overdue.sort(Comparator.comparing(Loan::getDueDate));
+        return overdue;
+    }
+
+    /** "Overdue Books": copies this member currently has out that should already have been returned. */
+    public int getOverdueBooks() {
+        int total = 0;
+        for (Loan loan : getOverdueLoans()) {
+            total += loan.getQuantity();
+        }
         return total;
+    }
+
+    /**
+     * True once the membership's end date has passed. A membership is still
+     * good on its end date itself. A missing or unreadable end date never
+     * counts as expired.
+     */
+    public boolean isExpired() {
+        LocalDate end = getEndLocalDate();
+        return end != null && end.isBefore(Library.today());
     }
 
     /** The membership start date as a LocalDate, or null if it isn't set/valid. */

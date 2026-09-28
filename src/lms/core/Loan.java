@@ -1,6 +1,7 @@
 package lms.core;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
 /**
  * One book (in some quantity) lent to a member: when it was borrowed,
@@ -66,15 +67,25 @@ public class Loan {
         return returnDate != null;
     }
 
-    /** A penalty applies when the copies came back after the due date. */
-    public boolean isPenalized() {
+    /** True if the copies came back after the due date (a fact about a finished loan). */
+    public boolean isReturnedLate() {
         return returnDate != null && returnDate.isAfter(dueDate);
+    }
+
+    /** True if the copies are still out and {@code today} is past the due date. */
+    public boolean isOverdue(LocalDate today) {
+        return returnDate == null && today.isAfter(dueDate);
+    }
+
+    /** How many days past the due date the copies are as of {@code today} (0 if they aren't overdue). */
+    public long getDaysOverdue(LocalDate today) {
+        return isOverdue(today) ? ChronoUnit.DAYS.between(dueDate, today) : 0;
     }
 
     public Status getStatus(LocalDate today) {
         if (returnDate != null) {
-            return isPenalized() ? Status.RETURNED_LATE : Status.RETURNED;
+            return isReturnedLate() ? Status.RETURNED_LATE : Status.RETURNED;
         }
-        return today.isAfter(dueDate) ? Status.OVERDUE : Status.BORROWED;
+        return isOverdue(today) ? Status.OVERDUE : Status.BORROWED;
     }
 }
