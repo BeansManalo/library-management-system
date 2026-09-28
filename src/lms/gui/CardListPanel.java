@@ -2,107 +2,40 @@ package lms.gui;
 
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.Rectangle;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 
 /**
- * Vertical stack of row cards (BookCardPanel / MemberCardPanel) meant to
- * sit inside a JScrollPane. Implementing Scrollable just to track the
- * viewport's width is what lets each row stretch edge-to-edge instead of
- * leaving a gap next to the scrollbar, and gives the wheel a sane
- * per-row scroll amount instead of Swing's tiny default.
+ * Shared layout helper for the narrow two-stat column on the left edge
+ * of every row card (BookCardPanel / MemberCardPanel).
+ *
+ * The Book List and Member List used to be plain scrollable panels
+ * holding one always-live BookCardPanel/MemberCardPanel per row, which
+ * got rebuilt from scratch on every keystroke of the search box -- fine
+ * for a handful of rows, but it noticeably lagged once the list got
+ * long. Both screens now use a JList instead (see BookListPanel /
+ * MemberListPanel), which only ever renders the rows actually on
+ * screen, reusing a single BookCardPanel/MemberCardPanel instance as
+ * its ListCellRenderer. This class no longer needs to host the list
+ * itself -- just the bit of row layout the two card classes share.
+ * Because that one card instance is now reused instead of rebuilt, the
+ * two value labels are created by the caller and handed in here (rather
+ * than built fresh from a String) so the caller can keep a reference
+ * and update the text in place on every re-render.
  */
-@SuppressWarnings("serial")
-public class CardListPanel extends JPanel implements Scrollable {
+final class CardListPanel {
 
-    /** Roughly one card's height -- see BookCardPanel/MemberCardPanel. */
-    private static final int UNIT = 64;
-
-    public CardListPanel() {
-        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        setBackground(Theme.CARD_BG);
-    }
-
-    @Override
-    public Dimension getPreferredScrollableViewportSize() {
-        return getPreferredSize();
-    }
-
-    @Override
-    public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
-        return UNIT;
-    }
-
-    @Override
-    public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
-        return visibleRect.height;
-    }
-
-    @Override
-    public boolean getScrollableTracksViewportWidth() {
-        return true;
-    }
-
-    @Override
-    public boolean getScrollableTracksViewportHeight() {
-        return false;
-    }
-
-    /**
-     * A click anywhere on a card -- including on one of its labels, which
-     * would otherwise swallow the event before the card panel ever saw it
-     * -- selects the row; a double-click also opens it. Installed once,
-     * recursively, over the card's whole component tree.
-     */
-    static void makeClickable(Component root, Runnable onSelect, Runnable onOpen) {
-        root.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                onSelect.run();
-                if (e.getClickCount() == 2) {
-                    onOpen.run();
-                }
-            }
-        });
-        if (root instanceof java.awt.Container) {
-            for (Component child : ((java.awt.Container) root).getComponents()) {
-                makeClickable(child, onSelect, onOpen);
-            }
-        }
-    }
-
-    /**
-     * Clicking the table's own background -- anywhere in the scroll pane
-     * that isn't one of the row cards -- deselects the current row, the
-     * same way clicking empty space around a file list normally does.
-     * A card's own click never reaches here (see makeClickable above),
-     * so this only ever fires for genuinely empty space: the viewport
-     * catches the gap below the last row when the list doesn't fill the
-     * visible height, and this panel catches everywhere else.
-     */
-    static void makeBackgroundDeselectable(JScrollPane scrollPane, CardListPanel listPanel, Runnable onDeselect) {
-        MouseAdapter deselect = new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                onDeselect.run();
-            }
-        };
-        scrollPane.getViewport().addMouseListener(deselect);
-        listPanel.addMouseListener(deselect);
+    private CardListPanel() {
     }
 
     /** The narrow two-stat column on the left edge of every card. */
-    static JPanel statColumn(String captionA, String valueA, String captionB, String valueB) {
+    static JPanel statColumn(String captionA, JLabel valueA, String captionB, JLabel valueB) {
         JPanel col = new JPanel(new java.awt.GridLayout(2, 1));
         col.setOpaque(false);
         col.setBorder(new CompoundBorder(
@@ -124,7 +57,7 @@ public class CardListPanel extends JPanel implements Scrollable {
      * independently in its own half of that space, which spreads the two
      * apart instead of pairing them.
      */
-    private static JPanel statCell(String caption, String value, boolean topDivider) {
+    private static JPanel statCell(String caption, JLabel valueLabel, boolean topDivider) {
         JPanel cell = new JPanel();
         cell.setOpaque(false);
         cell.setLayout(new BoxLayout(cell, BoxLayout.Y_AXIS));
@@ -135,15 +68,16 @@ public class CardListPanel extends JPanel implements Scrollable {
         captionLabel.setFont(Theme.FONT_CARD_CAPTION);
         captionLabel.setForeground(Theme.TEXT_PRIMARY);
         captionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        JLabel valueLabel = new JLabel(value, SwingConstants.CENTER);
+
+        valueLabel.setHorizontalAlignment(SwingConstants.CENTER);
         valueLabel.setFont(Theme.FONT_CARD_STAT);
         valueLabel.setForeground(Theme.TEXT_PRIMARY);
         valueLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        cell.add(javax.swing.Box.createVerticalGlue());
+        cell.add(Box.createVerticalGlue());
         cell.add(captionLabel);
         cell.add(valueLabel);
-        cell.add(javax.swing.Box.createVerticalGlue());
+        cell.add(Box.createVerticalGlue());
         return cell;
     }
 }

@@ -6,10 +6,12 @@ import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.event.DocumentEvent;
@@ -23,7 +25,7 @@ public class BookListPanel extends JPanel {
     private final ProportionalLayout layout = new ProportionalLayout();
     private JLabel banner;
     private JTextField txtSearch;
-    private CardListPanel cardListPanel;
+    private JList<Book> bookList;
     private PillButton btnView;
     private PillButton btnAddNew;
     private PillButton btnDelete;
@@ -38,13 +40,10 @@ public class BookListPanel extends JPanel {
     private boolean manageMode;
 
     // The rows currently shown (i.e. after the search filter is applied),
-    // in the same order as the card list. cardPanels is the on-screen
-    // component for each entry in displayedBooks, kept in step with it so
-    // a click can flip one card's selected look without rebuilding the
-    // whole list.
+    // in the same order as bookList's model -- bookList.getSelectedValue()
+    // / getSelectedIndex() is enough to know which one is selected, so
+    // there's no separate selection bookkeeping to keep in step with it.
     private List<Book> displayedBooks = new ArrayList<>();
-    private List<BookCardPanel> cardPanels = new ArrayList<>();
-    private int selectedIndex = -1;
 
     /**
      * Create the panel.
@@ -56,13 +55,13 @@ public class BookListPanel extends JPanel {
 
         // Catches clicks on the blank margins around the table and
         // buttons -- everywhere that isn't a specific control. The
-        // table's own blank space (below the last row) is handled
-        // separately below, since the scroll pane's viewport sits in
-        // front of this panel there.
+        // list's own blank space (below the last row) is handled
+        // separately below, on the scroll pane's viewport, since it
+        // sits in front of this panel there.
         addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                selectRow(-1);
+                bookList.clearSelection();
             }
         });
 
@@ -100,14 +99,54 @@ public class BookListPanel extends JPanel {
             }
         });
 
-        cardListPanel = new CardListPanel();
-        JScrollPane scrollPane = new JScrollPane(cardListPanel);
+        // A JList instead of a scrollable panel of always-live row
+        // components: it only ever renders the rows actually on screen,
+        // reusing the one BookCardPanel instance below as its cell
+        // renderer, so filtering/scrolling stays fast regardless of how
+        // many books there are (see BookCardPanel's class comment).
+        bookList = new JList<>();
+        bookList.setCellRenderer(new BookCardPanel());
+        // No setFixedCellHeight(): each row is sized from the renderer's
+        // own preferred height instead of a hardcoded guess, so it stays
+        // correct even if a row's content (and so its natural height)
+        // changes later.
+        bookList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        bookList.setBackground(Theme.CARD_BG);
+        // JList doesn't select anything on a click that misses every row
+        // (e.g. in the leftover space below the last one), so a plain
+        // click listener -- rather than a selection listener -- is what's
+        // needed to also clear the selection on that kind of click.
+        bookList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int index = bookList.locationToIndex(e.getPoint());
+                if (index >= 0 && bookList.getCellBounds(index, index).contains(e.getPoint())) {
+                    bookList.setSelectedIndex(index);
+                    if (e.getClickCount() == 2) {
+                        openBook(displayedBooks.get(index));
+                    }
+                } else {
+                    bookList.clearSelection();
+                }
+            }
+        });
+
+        JScrollPane scrollPane = new JScrollPane(bookList);
         scrollPane.setBorder(new LineBorder(Theme.DIVIDER, 1));
         scrollPane.getVerticalScrollBar().setUnitIncrement(24);
         scrollPane.getViewport().setBackground(Theme.CARD_BG);
         place(scrollPane, 20, 72, 430, 212);
         add(scrollPane);
-        CardListPanel.makeBackgroundDeselectable(scrollPane, cardListPanel, () -> selectRow(-1));
+        // Clicking the scroll pane's own background -- the gap below the
+        // last row when the list doesn't fill the visible height --
+        // deselects the current row, the same way clicking empty space
+        // around a file list normally does.
+        scrollPane.getViewport().addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                bookList.clearSelection();
+            }
+        });
 
         // Visible in both roles, at the top of the button column so
         // there's no dead space above it when Add New / Delete are
@@ -165,7 +204,7 @@ public class BookListPanel extends JPanel {
     }
 
     /**
-     * Reloads the card list from the shared Library, applying the current
+     * Reloads the list from the shared Library, applying the current
      * search text as a filter. Called on every keystroke in the search
      * box, and by MainFrame every time this screen is shown (see
      * MainFrame.showCard) so the list never shows stale data.
@@ -175,25 +214,16 @@ public class BookListPanel extends JPanel {
 
         displayedBooks = new ArrayList<>();
         for (Book book : mainFrame.getLibrary().getBooks()) {
-            if (query.isEmpty() || matches(book, query)) {
+            if (query.isEmpty() || book.matches(query)) {
                 displayedBooks.add(book);
             }
         }
 
-        selectedIndex = -1;
-        cardPanels = new ArrayList<>();
-        cardListPanel.removeAll();
-        for (int i = 0; i < displayedBooks.size(); i++) {
-            Book book = displayedBooks.get(i);
-            int rowIndex = i;
-            BookCardPanel card = new BookCardPanel(book,
-                () -> selectRow(rowIndex),
-                () -> openBook(book));
-            cardPanels.add(card);
-            cardListPanel.add(card);
-        }
-        cardListPanel.revalidate();
-        cardListPanel.repaint();
+        // Just hands the JList plain Book references, not components --
+        // the actual row visuals only get built when a row scrolls into
+        // view (see the cell renderer set up above).
+        bookList.setListData(displayedBooks.toArray(new Book[0]));
+        bookList.clearSelection();
     }
 
     /** Double-click target: the editable form in manage mode, the read-only viewer otherwise. */
@@ -205,31 +235,17 @@ public class BookListPanel extends JPanel {
         }
     }
 
-    private void selectRow(int index) {
-        selectedIndex = index;
-        for (int i = 0; i < cardPanels.size(); i++) {
-            cardPanels.get(i).setSelected(i == index);
-        }
-    }
-
-    /** True if any of the book's fields (including its tags) contain the search text. */
-    private boolean matches(Book book, String query) {
-        return contains(book.getTitle(), query)
-            || contains(book.getAuthor(), query)
-            || contains(book.getGenre(), query)
-            || contains(book.getIsbn(), query)
-            || contains(book.getPublisher(), query)
-            || contains(book.getTags(), query);
-    }
-
-    private boolean contains(String field, String query) {
-        return field != null && field.toLowerCase().contains(query);
-    }
-
     /** Removes the selected row from the library, after confirming with the user. */
     private void deleteSelectedBook() {
         Book selected = getSelectedBook();
         if (selected == null) {
+            return;
+        }
+        int onLoan = selected.getTotalCopies() - selected.getAvailableCopies();
+        if (onLoan > 0) {
+            JOptionPane.showMessageDialog(this,
+                "\"" + selected.getTitle() + "\" still has " + onLoan + " cop" + (onLoan == 1 ? "y" : "ies") + " borrowed out.\nIt can be deleted once they're returned.",
+                "Cannot Delete", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -248,14 +264,15 @@ public class BookListPanel extends JPanel {
      * dialog instead of an exception) if nothing is selected.
      */
     private Book getSelectedBook() {
-        if (selectedIndex < 0 || selectedIndex >= displayedBooks.size()) {
+        Book selected = bookList.getSelectedValue();
+        if (selected == null) {
             JOptionPane.showMessageDialog(this,
                 "Please select a book first.",
                 "No Selection",
                 JOptionPane.WARNING_MESSAGE);
             return null;
         }
-        return displayedBooks.get(selectedIndex);
+        return selected;
     }
 
     /**

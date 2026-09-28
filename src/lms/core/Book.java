@@ -97,4 +97,14 @@ public class Book {
     public boolean isAvailable() {
         return availableCopies > 0;
     }
+
+    /** True if any searchable field (including the tags) contains the given lowercase text. */
+    public boolean matches(String query) {
+        return contains(title, query) || contains(author, query) || contains(genre, query)
+            || contains(isbn, query) || contains(publisher, query) || contains(tags, query);
+    }
+
+    private static boolean contains(String field, String query) {
+        return field != null && field.toLowerCase().contains(query);
+    }
 }

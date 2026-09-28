@@ -12,11 +12,19 @@ import lms.core.ValidationException;
 @SuppressWarnings("serial")
 public class AddEditMemberPanel extends JPanel {
 
+    // Shared column width for every field except the First/Last Name
+    // row, which splits it between two fields -- keeping both columns
+    // this wide (instead of the original 160) closes the dead gap that
+    // used to sit between them and balances the margin on both sides.
+    private static final int FIELD_WIDTH = 260;
+
     private MainFrame mainFrame;
     private final ProportionalLayout layout = new ProportionalLayout();
     private JLabel lblAddAndEditMembers;
     private JTextField txtMemberId;
-    private JTextField txtName;
+    private JTextField txtFirstName;
+    private JTextField txtLastName;
+    private DatePickerField txtBirthDate;
     private JTextField txtContactNumber;
     private JTextField txtEmail;
     private JTextField txtAddress;
@@ -44,20 +52,25 @@ public class AddEditMemberPanel extends JPanel {
         place(lblAddAndEditMembers, 0, 0, 640, 30);
         add(lblAddAndEditMembers);
 
-        // Left column: who the member is.
+        // Left column: who the member is. First/Last Name share one row
+        // (kept together as one visual "Name" unit) with Birth Date
+        // directly beneath it.
         txtMemberId = field("Member ID:", 40, 42);
-        txtName = field("Name:", 40, 92);
-        txtContactNumber = field("Contact Number:", 40, 142);
-        txtEmail = field("Email:", 40, 192);
+        txtFirstName = field("First Name:", 40, 92, 120);
+        txtLastName = field("Last Name:", 170, 92, 130);
+        txtBirthDate = dateField("Birth Date:", 40, 142, DATE_FORMAT);
+        txtBirthDate.setMaxDate(LocalDate.now());
+        txtContactNumber = field("Contact Number:", 40, 192);
 
-        // Right column: where they are and their membership window.
+        // Right column: how to reach them and their membership window.
         // Books Borrowed / Penalties are intentionally not here -- those
         // will belong to a future borrowing system, not something typed
         // in by hand; the list/detail views still show them read-only.
-        txtAddress = field("Address:", 340, 42);
-        txtJoinDate = dateField("Join Date:", 340, 92, DATE_FORMAT);
+        txtEmail = field("Email:", 340, 42);
+        txtAddress = field("Address:", 340, 92);
+        txtJoinDate = dateField("Join Date:", 340, 142, DATE_FORMAT);
         txtJoinDate.setMaxDate(LocalDate.now());
-        txtEndDate = dateField("End Date:", 340, 142, DATE_FORMAT);
+        txtEndDate = dateField("End Date:", 340, 192, DATE_FORMAT);
 
         // End Date defaults to a year after Join Date, and only opens up
         // for manual editing once there's a Join Date to measure from --
@@ -98,12 +111,17 @@ public class AddEditMemberPanel extends JPanel {
         layout.put(c, x, y, w, h);
     }
 
-    /** Adds a label + text field pair at (x, y) and returns the field. */
+    /** Adds a label + text field pair at (x, y), FIELD_WIDTH wide, and returns the field. */
     private JTextField field(String labelText, int x, int y) {
+        return field(labelText, x, y, FIELD_WIDTH);
+    }
+
+    /** Same as field(labelText, x, y), but with an explicit field width -- for fields sharing a row. */
+    private JTextField field(String labelText, int x, int y, int width) {
         JLabel label = new JLabel(labelText);
         label.setFont(Theme.FONT_LABEL);
         label.setForeground(Theme.TEXT_PRIMARY);
-        place(label, x, y, 150, 16);
+        place(label, x, y, width, 16);
         add(label);
 
         JTextField text = new JTextField();
@@ -111,7 +129,7 @@ public class AddEditMemberPanel extends JPanel {
         text.setBorder(new javax.swing.border.CompoundBorder(
             new javax.swing.border.LineBorder(Theme.DIVIDER, 1),
             new javax.swing.border.EmptyBorder(2, 6, 2, 6)));
-        place(text, x, y + 18, 160, 24);
+        place(text, x, y + 18, width, 24);
         add(text);
         return text;
     }
@@ -121,11 +139,11 @@ public class AddEditMemberPanel extends JPanel {
         JLabel label = new JLabel(labelText);
         label.setFont(Theme.FONT_LABEL);
         label.setForeground(Theme.TEXT_PRIMARY);
-        place(label, x, y, 150, 16);
+        place(label, x, y, FIELD_WIDTH, 16);
         add(label);
 
         DatePickerField picker = new DatePickerField(format);
-        place(picker, x, y + 18, 160, 24);
+        place(picker, x, y + 18, FIELD_WIDTH, 24);
         add(picker);
         return picker;
     }
@@ -145,7 +163,9 @@ public class AddEditMemberPanel extends JPanel {
         if (member == null) {
             lblAddAndEditMembers.setText("ADD MEMBER");
             txtMemberId.setText("");
-            txtName.setText("");
+            txtFirstName.setText("");
+            txtLastName.setText("");
+            txtBirthDate.setText("");
             txtContactNumber.setText("");
             txtEmail.setText("");
             txtAddress.setText("");
@@ -156,7 +176,9 @@ public class AddEditMemberPanel extends JPanel {
         } else {
             lblAddAndEditMembers.setText("EDIT MEMBER");
             txtMemberId.setText(member.getMemberId());
-            txtName.setText(member.getName());
+            txtFirstName.setText(member.getFirstName());
+            txtLastName.setText(member.getLastName());
+            txtBirthDate.setText(member.getBirthDate());
             txtContactNumber.setText(member.getContactNumber());
             txtEmail.setText(member.getEmail());
             txtAddress.setText(member.getAddress());
@@ -175,8 +197,9 @@ public class AddEditMemberPanel extends JPanel {
      */
     private void save() {
         try {
-            validateRequired(txtMemberId.getText(), txtName.getText(), txtContactNumber.getText(),
-                txtEmail.getText(), txtAddress.getText(), txtJoinDate.getText(), txtEndDate.getText());
+            validateRequired(txtMemberId.getText(), txtFirstName.getText(), txtLastName.getText(),
+                txtBirthDate.getText(), txtContactNumber.getText(), txtEmail.getText(), txtAddress.getText(),
+                txtJoinDate.getText(), txtEndDate.getText());
         } catch (ValidationException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Missing Information", JOptionPane.WARNING_MESSAGE);
             return;
@@ -186,19 +209,17 @@ public class AddEditMemberPanel extends JPanel {
         Member member = isNew ? new Member() : editingMember;
 
         member.setMemberId(txtMemberId.getText().trim());
-        member.setName(txtName.getText().trim());
+        member.setFirstName(txtFirstName.getText().trim());
+        member.setLastName(txtLastName.getText().trim());
+        member.setBirthDate(txtBirthDate.getText().trim());
         member.setContactNumber(txtContactNumber.getText().trim());
         member.setEmail(txtEmail.getText().trim());
         member.setAddress(txtAddress.getText().trim());
         member.setJoinDate(txtJoinDate.getText().trim());
         member.setEndDate(txtEndDate.getText().trim());
-        // Books Borrowed / Penalties are system-managed, not form fields
-        // -- a brand-new member simply starts at zero of each; editing an
-        // existing member leaves their current counts untouched.
-        if (isNew) {
-            member.setBooksBorrowed(0);
-            member.setPenalties(0);
-        }
+        // Books Borrowed / Penalties aren't form fields -- Member works
+        // them out from its loans, so a new member starts at zero and an
+        // edited one keeps its history.
 
         if (isNew) {
             mainFrame.getLibrary().getMembers().add(member);
@@ -211,13 +232,20 @@ public class AddEditMemberPanel extends JPanel {
     }
 
     /** Throws ValidationException naming the first required field left blank. */
-    private void validateRequired(String memberId, String name, String contactNumber, String email,
-            String address, String joinDate, String endDate) throws ValidationException {
+    private void validateRequired(String memberId, String firstName, String lastName, String birthDate,
+            String contactNumber, String email, String address, String joinDate, String endDate)
+            throws ValidationException {
         if (memberId.trim().isEmpty()) {
             throw new ValidationException("Member ID is required.");
         }
-        if (name.trim().isEmpty()) {
-            throw new ValidationException("Name is required.");
+        if (firstName.trim().isEmpty()) {
+            throw new ValidationException("First Name is required.");
+        }
+        if (lastName.trim().isEmpty()) {
+            throw new ValidationException("Last Name is required.");
+        }
+        if (birthDate.trim().isEmpty()) {
+            throw new ValidationException("Birth Date is required.");
         }
         if (contactNumber.trim().isEmpty()) {
             throw new ValidationException("Contact Number is required.");

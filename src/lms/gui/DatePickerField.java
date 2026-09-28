@@ -5,11 +5,16 @@ import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.Insets;
 import java.time.LocalDate;
+import java.time.Month;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.format.TextStyle;
+import java.util.Locale;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
@@ -20,13 +25,31 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 
 /**
- * A text field plus a small calendar button that opens a popup month
- * grid. The date can only be set by picking a day from that popup --
+ * A text field plus a small calendar button that opens a popup date
+ * picker. The date can only be set by picking a day from that popup --
  * the text field itself is read-only, so there's no way to type in an
  * invalid (or just plain wrong) date by hand.
+ *
+ * The popup has three levels, so a date far from today (a 1987 birth
+ * date, say) is a handful of clicks away instead of dozens of
+ * Prev-Month clicks: DAY (the usual one-month day grid) drills UP into
+ * MONTH (a 12-month grid for one year) by clicking the day grid's own
+ * month/year heading, and MONTH drills further UP into YEAR (a page of
+ * 12 years) by clicking ITS year heading. Picking a month or year
+ * drills back DOWN one level, landing on that month/year.
+ *
+ * Whatever's set via setMinDate()/setMaxDate() applies at every level,
+ * the same way it already applied to individual days: a month or year
+ * that's entirely out of range is shown, disabled, rather than hidden
+ * -- so it's obvious *why* e.g. a birth date can't be set to 2030, not
+ * just that 2030 silently isn't reachable.
  */
 @SuppressWarnings("serial")
 public class DatePickerField extends JPanel {
+
+    // Years shown per page of the YEAR view, laid out 4 columns x 3
+    // rows -- same shape as the MONTH view's 12-month grid.
+    private static final int YEAR_PAGE_SIZE = 12;
 
     private final JTextField field;
     private final DateTimeFormatter format;
@@ -59,7 +82,7 @@ public class DatePickerField extends JPanel {
         JButton calendarButton = new JButton(RowIcons.calendar(14, Theme.TEXT_PRIMARY));
         calendarButton.setToolTipText("Pick a date");
         calendarButton.setFocusPainted(false);
-        calendarButton.setMargin(new java.awt.Insets(0, 0, 0, 0));
+        calendarButton.setMargin(new Insets(0, 0, 0, 0));
         calendarButton.setBackground(Theme.CARD_BG);
         calendarButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         calendarButton.setPreferredSize(new Dimension(22, 10));
@@ -72,12 +95,12 @@ public class DatePickerField extends JPanel {
         this.onDateChanged = listener;
     }
 
-    /** Days before this date are shown disabled in the popup. Null clears the bound. */
+    /** Days before this date are shown disabled in the popup (at every level). Null clears the bound. */
     public void setMinDate(LocalDate minDate) {
         this.minDate = minDate;
     }
 
-    /** Days after this date are shown disabled in the popup. Null clears the bound. */
+    /** Days after this date are shown disabled in the popup (at every level). Null clears the bound. */
     public void setMaxDate(LocalDate maxDate) {
         this.maxDate = maxDate;
     }
@@ -115,33 +138,25 @@ public class DatePickerField extends JPanel {
         JPopupMenu popup = new JPopupMenu();
         popup.setBorder(new LineBorder(Theme.DIVIDER, 1));
         popup.setLayout(new BorderLayout());
-        popup.add(buildCalendar(month, current, popup), BorderLayout.CENTER);
+        popup.add(buildDayView(month, current, popup), BorderLayout.CENTER);
         popup.show(anchor, anchor.getWidth() - 210, anchor.getHeight());
     }
 
-    /** Rebuilt fresh every time the popup opens or the month is navigated. */
-    private JPanel buildCalendar(YearMonth month, LocalDate selected, JPopupMenu popup) {
-        JPanel root = new JPanel(new BorderLayout(0, 4));
-        root.setBackground(Theme.CARD_BG);
-        root.setBorder(new EmptyBorder(6, 6, 6, 6));
+    // ---- DAY: the usual one-month grid. Its heading drills UP to MONTH. ----
 
-        JLabel monthLabel = new JLabel(
-            month.getMonth().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.US) + " " + month.getYear(),
-            SwingConstants.CENTER);
-        monthLabel.setFont(Theme.FONT_CARD_TITLE);
-        monthLabel.setForeground(Theme.TEXT_PRIMARY);
+    /** Rebuilt fresh every time the popup opens or navigates. */
+    private JPanel buildDayView(YearMonth month, LocalDate selected, JPopupMenu popup) {
+        JPanel root = popupRoot();
+
+        JButton heading = headingButton(
+            month.getMonth().getDisplayName(TextStyle.FULL, Locale.US) + " " + month.getYear());
+        heading.addActionListener(e -> swap(popup, buildMonthView(month.getYear(), selected, popup)));
 
         JButton prev = navButton(RowIcons.triangle(9, false, Theme.TEXT_PRIMARY));
         JButton next = navButton(RowIcons.triangle(9, true, Theme.TEXT_PRIMARY));
-        prev.addActionListener(e -> refreshPopup(popup, month.minusMonths(1), selected));
-        next.addActionListener(e -> refreshPopup(popup, month.plusMonths(1), selected));
-
-        JPanel header = new JPanel(new BorderLayout());
-        header.setOpaque(false);
-        header.add(prev, BorderLayout.WEST);
-        header.add(monthLabel, BorderLayout.CENTER);
-        header.add(next, BorderLayout.EAST);
-        root.add(header, BorderLayout.NORTH);
+        prev.addActionListener(e -> swap(popup, buildDayView(month.minusMonths(1), selected, popup)));
+        next.addActionListener(e -> swap(popup, buildDayView(month.plusMonths(1), selected, popup)));
+        root.add(popupHeader(prev, heading, next), BorderLayout.NORTH);
 
         JPanel grid = new JPanel(new GridLayout(0, 7, 2, 2));
         grid.setOpaque(false);
@@ -163,7 +178,7 @@ public class DatePickerField extends JPanel {
             boolean disabled = (minDate != null && date.isBefore(minDate)) || (maxDate != null && date.isAfter(maxDate));
             JButton dayButton = new JButton(String.valueOf(day));
             dayButton.setFont(Theme.FONT_LABEL);
-            dayButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
+            dayButton.setMargin(new Insets(2, 2, 2, 2));
             dayButton.setFocusPainted(false);
             dayButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
             boolean isSelected = date.equals(selected);
@@ -183,6 +198,107 @@ public class DatePickerField extends JPanel {
         return root;
     }
 
+    // ---- MONTH: one year's 12 months. Heading drills UP to YEAR; picking a month drills DOWN to DAY. ----
+
+    private JPanel buildMonthView(int year, LocalDate selected, JPopupMenu popup) {
+        JPanel root = popupRoot();
+
+        JButton heading = headingButton(String.valueOf(year));
+        heading.addActionListener(e -> swap(popup, buildYearView(pageStartFor(year), selected, popup)));
+
+        JButton prev = navButton(RowIcons.triangle(9, false, Theme.TEXT_PRIMARY));
+        JButton next = navButton(RowIcons.triangle(9, true, Theme.TEXT_PRIMARY));
+        prev.addActionListener(e -> swap(popup, buildMonthView(year - 1, selected, popup)));
+        next.addActionListener(e -> swap(popup, buildMonthView(year + 1, selected, popup)));
+        root.add(popupHeader(prev, heading, next), BorderLayout.NORTH);
+
+        YearMonth thisMonth = YearMonth.now();
+        JPanel grid = new JPanel(new GridLayout(3, 4, 4, 4));
+        grid.setOpaque(false);
+        for (int m = 1; m <= 12; m++) {
+            YearMonth candidate = YearMonth.of(year, m);
+            // Out of range if the whole month falls before minDate or after maxDate.
+            boolean disabled = (minDate != null && candidate.atEndOfMonth().isBefore(minDate))
+                || (maxDate != null && candidate.atDay(1).isAfter(maxDate));
+            boolean isSelected = selected != null && selected.getYear() == year && selected.getMonthValue() == m;
+            JButton cell = cellButton(Month.of(m).getDisplayName(TextStyle.SHORT, Locale.US),
+                isSelected, disabled, candidate.equals(thisMonth));
+            final int monthValue = m;
+            cell.addActionListener(e -> swap(popup, buildDayView(YearMonth.of(year, monthValue), selected, popup)));
+            grid.add(cell);
+        }
+        root.add(grid, BorderLayout.CENTER);
+
+        return root;
+    }
+
+    // ---- YEAR: one page of 12 years -- the top level. Picking a year drills DOWN to MONTH. ----
+
+    private JPanel buildYearView(int pageStart, LocalDate selected, JPopupMenu popup) {
+        JPanel root = popupRoot();
+
+        int pageEnd = pageStart + YEAR_PAGE_SIZE - 1;
+        JLabel heading = new JLabel(pageStart + "\u2013" + pageEnd, SwingConstants.CENTER);
+        heading.setFont(Theme.FONT_CARD_TITLE);
+        heading.setForeground(Theme.TEXT_PRIMARY);
+
+        JButton prev = navButton(RowIcons.triangle(9, false, Theme.TEXT_PRIMARY));
+        JButton next = navButton(RowIcons.triangle(9, true, Theme.TEXT_PRIMARY));
+        prev.addActionListener(e -> swap(popup, buildYearView(pageStart - YEAR_PAGE_SIZE, selected, popup)));
+        next.addActionListener(e -> swap(popup, buildYearView(pageStart + YEAR_PAGE_SIZE, selected, popup)));
+        root.add(popupHeader(prev, heading, next), BorderLayout.NORTH);
+
+        int thisYear = LocalDate.now().getYear();
+        JPanel grid = new JPanel(new GridLayout(3, 4, 4, 4));
+        grid.setOpaque(false);
+        for (int y = pageStart; y <= pageEnd; y++) {
+            LocalDate firstOfYear = LocalDate.of(y, 1, 1);
+            LocalDate lastOfYear = LocalDate.of(y, 12, 31);
+            // Out of range if the whole year falls before minDate or after maxDate.
+            boolean disabled = (minDate != null && lastOfYear.isBefore(minDate))
+                || (maxDate != null && firstOfYear.isAfter(maxDate));
+            boolean isSelected = selected != null && selected.getYear() == y;
+            JButton cell = cellButton(String.valueOf(y), isSelected, disabled, y == thisYear);
+            final int year = y;
+            cell.addActionListener(e -> swap(popup, buildMonthView(year, selected, popup)));
+            grid.add(cell);
+        }
+        root.add(grid, BorderLayout.CENTER);
+
+        return root;
+    }
+
+    // ---- Shared popup-building helpers ----
+
+    private JPanel popupRoot() {
+        JPanel root = new JPanel(new BorderLayout(0, 4));
+        root.setBackground(Theme.CARD_BG);
+        root.setBorder(new EmptyBorder(6, 6, 6, 6));
+        return root;
+    }
+
+    private JPanel popupHeader(JButton prev, JComponent heading, JButton next) {
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+        header.add(prev, BorderLayout.WEST);
+        header.add(heading, BorderLayout.CENTER);
+        header.add(next, BorderLayout.EAST);
+        return header;
+    }
+
+    /** Looks like the plain title label it replaces, but drills up a level on click. */
+    private JButton headingButton(String text) {
+        JButton b = new JButton(text);
+        b.setFont(Theme.FONT_CARD_TITLE);
+        b.setForeground(Theme.TEXT_PRIMARY);
+        b.setHorizontalAlignment(SwingConstants.CENTER);
+        b.setFocusPainted(false);
+        b.setBorderPainted(false);
+        b.setContentAreaFilled(false);
+        b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        return b;
+    }
+
     private JButton navButton(javax.swing.Icon icon) {
         JButton b = new JButton(icon);
         b.setFocusPainted(false);
@@ -192,11 +308,30 @@ public class DatePickerField extends JPanel {
         return b;
     }
 
-    /** Swaps the popup's content for a different month without closing it. */
-    private void refreshPopup(JPopupMenu popup, YearMonth newMonth, LocalDate selected) {
+    /** One month or year cell in the MONTH/YEAR grids -- same look as a day cell in the DAY grid. */
+    private JButton cellButton(String text, boolean selected, boolean disabled, boolean isCurrent) {
+        JButton b = new JButton(text);
+        b.setFont(Theme.FONT_LABEL);
+        b.setMargin(new Insets(6, 2, 6, 2));
+        b.setFocusPainted(false);
+        b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        b.setBackground(selected ? Theme.NAVY : Theme.CARD_BG);
+        b.setForeground(disabled ? Theme.TEXT_MUTED : (selected ? Color.WHITE : Theme.TEXT_PRIMARY));
+        b.setBorder(new LineBorder(isCurrent ? Theme.BLUE_ACCENT : Theme.DIVIDER, 1));
+        b.setEnabled(!disabled);
+        return b;
+    }
+
+    /** Swaps the popup's content for a different view/page without closing it. */
+    private void swap(JPopupMenu popup, JPanel content) {
         popup.removeAll();
-        popup.add(buildCalendar(newMonth, selected, popup), BorderLayout.CENTER);
+        popup.add(content, BorderLayout.CENTER);
         popup.revalidate();
         popup.repaint();
+    }
+
+    /** The 12-year page (aligned to multiples of YEAR_PAGE_SIZE) that contains this year. */
+    private static int pageStartFor(int year) {
+        return Math.floorDiv(year, YEAR_PAGE_SIZE) * YEAR_PAGE_SIZE;
     }
 }

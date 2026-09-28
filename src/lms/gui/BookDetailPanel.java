@@ -3,16 +3,18 @@ package lms.gui;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.FlowLayout;
-import javax.swing.BoxLayout;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.event.MouseEvent;
 import javax.swing.JLabel;
+import javax.swing.JComponent;
 import javax.swing.JPanel;
-import javax.swing.SwingConstants;
-import javax.swing.border.EmptyBorder;
+import javax.swing.ToolTipManager;
 import lms.core.Book;
 
 /**
  * Read-only, in-depth look at a single book: full details, a tag list,
- * and a per-copy tracker (one chip per physical copy, colored by
+ * and a per-copy tracker (one square per physical copy, colored by
  * whether it's presently available) -- opened by double-clicking a row
  * on the Book List, since that screen is browse/search only now and no
  * longer where fields get edited (see BookListPanel).
@@ -32,7 +34,7 @@ public class BookDetailPanel extends JPanel {
     private JLabel dateValue;
     private JLabel copiesValue;
     private JPanel tagsRow;
-    private JPanel copiesRow;
+    private CopyGrid copiesGrid;
 
     private Book book;
 
@@ -89,10 +91,19 @@ public class BookDetailPanel extends JPanel {
         place(copiesCaption, 30, 238, 400, 14);
         add(copiesCaption);
 
-        copiesRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 3));
-        copiesRow.setOpaque(false);
-        place(copiesRow, 30, 254, 570, 40);
-        add(copiesRow);
+        // A single custom-painted component instead of one real JPanel
+        // "swatch" per physical copy: the old version could hang for a
+        // moment on a book with a very large copy count, since it had
+        // to build, lay out, and register a tooltip on that many live
+        // Swing components every time this screen opened. Drawing NxM
+        // rectangles in one paintComponent() call, the same way this
+        // app's barcode is drawn (see MemberDetailPanel.BarcodeLabel),
+        // costs a fraction of that regardless of how large the count
+        // gets, while keeping the same look and the same per-square
+        // "Available"/"Checked out" tooltip.
+        copiesGrid = new CopyGrid();
+        place(copiesGrid, 30, 254, 570, 40);
+        add(copiesGrid);
 
         // Purely a viewer -- editing and deleting now only happen through
         // the "Add / Edit Books" screen (see BookListPanel's manage
@@ -156,24 +167,7 @@ public class BookDetailPanel extends JPanel {
         tagsRow.revalidate();
         tagsRow.repaint();
 
-        copiesRow.removeAll();
-        int total = Math.max(0, book.getTotalCopies());
-        int available = Math.max(0, Math.min(book.getAvailableCopies(), total));
-        for (int i = 0; i < total; i++) {
-            JPanel swatch = new JPanel();
-            swatch.setPreferredSize(new java.awt.Dimension(16, 16));
-            swatch.setBackground(i < available ? Theme.BLUE_ACCENT : new Color(0xA5, 0x33, 0x33));
-            swatch.setToolTipText(i < available ? "Available" : "Checked out");
-            copiesRow.add(swatch);
-        }
-        if (total == 0) {
-            JLabel none = new JLabel("No copies on record");
-            none.setFont(Theme.FONT_CARD_MUTED);
-            none.setForeground(Theme.TEXT_MUTED);
-            copiesRow.add(none);
-        }
-        copiesRow.revalidate();
-        copiesRow.repaint();
+        copiesGrid.setCopies(book.getAvailableCopies(), book.getTotalCopies());
     }
 
     private static String text(String value) {
@@ -182,5 +176,85 @@ public class BookDetailPanel extends JPanel {
 
     public void setMainFrame(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
+    }
+
+    /**
+     * Draws the copy tracker as a grid of small squares in one
+     * paintComponent() call instead of one real component per copy.
+     * When there isn't room to draw every copy in the space given, the
+     * grid fills what fits and folds the rest into a "+N" label rather
+     * than silently overflowing past its own bounds (which is what a
+     * FlowLayout of that many components would otherwise do here).
+     */
+    private static class CopyGrid extends JComponent {
+        private static final int SIZE = 16;
+        private static final int GAP = 3;
+        private static final int STEP = SIZE + GAP;
+
+        private int available;
+        private int total;
+
+        CopyGrid() {
+            ToolTipManager.sharedInstance().registerComponent(this);
+        }
+
+        void setCopies(int available, int total) {
+            this.total = Math.max(0, total);
+            this.available = Math.max(0, Math.min(available, this.total));
+            repaint();
+        }
+
+        private int columns() {
+            return Math.max(1, (getWidth() + GAP) / STEP);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            if (total == 0) {
+                g2.setFont(Theme.FONT_CARD_MUTED);
+                g2.setColor(Theme.TEXT_MUTED);
+                g2.drawString("No copies on record", 0, SIZE - 3);
+                g2.dispose();
+                return;
+            }
+
+            int cols = columns();
+            int rows = Math.max(1, (getHeight() + GAP) / STEP);
+            int capacity = cols * rows;
+            boolean overflow = total > capacity;
+            // Leaves the last cell free for the "+N" label below.
+            int shown = overflow ? Math.max(0, capacity - 1) : total;
+
+            for (int i = 0; i < shown; i++) {
+                g2.setColor(i < available ? Theme.BLUE_ACCENT : new Color(0xA5, 0x33, 0x33));
+                g2.fillRect((i % cols) * STEP, (i / cols) * STEP, SIZE, SIZE);
+            }
+            if (overflow) {
+                g2.setColor(Theme.TEXT_MUTED);
+                g2.setFont(Theme.FONT_CARD_CAPTION);
+                g2.drawString("+" + (total - shown), (shown % cols) * STEP, (shown / cols) * STEP + SIZE - 4);
+            }
+            g2.dispose();
+        }
+
+        /** Location-sensitive tooltip: which copy square (if any) is under the cursor. */
+        @Override
+        public String getToolTipText(MouseEvent event) {
+            if (total == 0) {
+                return null;
+            }
+            int cols = columns();
+            int col = event.getX() / STEP;
+            int row = event.getY() / STEP;
+            if (col < 0 || col >= cols) {
+                return null;
+            }
+            int index = row * cols + col;
+            if (index < 0 || index >= total) {
+                return null;
+            }
+            return index < available ? "Available" : "Checked out";
+        }
     }
 }

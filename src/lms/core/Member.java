@@ -1,21 +1,34 @@
 package lms.core;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * A registered library member.
  * Plain data holder (POJO), same shape as {@link Book} -- getters and
  * setters only, so it stays easy to swap for a database-backed row later.
+ * The one exception: books borrowed and penalties aren't stored, they're
+ * worked out from the member's loans so they can never drift out of sync.
  */
 public class Member {
 
+    /** The format every member date (and every loan date shown for them) is written in. */
+    public static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+
     private String memberId;
-    private String name;
+    private String firstName;
+    private String lastName;
     private String contactNumber;
     private String email;
     private String address;
+    private String birthDate;
     private String joinDate;
     private String endDate;
-    private int booksBorrowed;
-    private int penalties;
+    private final List<Loan> loans = new ArrayList<>();
 
     public String getMemberId() {
         return memberId;
@@ -25,12 +38,27 @@ public class Member {
         this.memberId = memberId;
     }
 
-    public String getName() {
-        return name;
+    public String getFirstName() {
+        return firstName;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    /** Full display name, "First Last" -- used everywhere a single name string is needed. */
+    public String getName() {
+        String first = (firstName == null) ? "" : firstName;
+        String last = (lastName == null) ? "" : lastName;
+        return (first + " " + last).trim();
     }
 
     public String getContactNumber() {
@@ -57,6 +85,14 @@ public class Member {
         this.address = address;
     }
 
+    public String getBirthDate() {
+        return birthDate;
+    }
+
+    public void setBirthDate(String birthDate) {
+        this.birthDate = birthDate;
+    }
+
     public String getJoinDate() {
         return joinDate;
     }
@@ -73,19 +109,52 @@ public class Member {
         this.endDate = endDate;
     }
 
+    public List<Loan> getLoans() {
+        return Collections.unmodifiableList(loans);
+    }
+
+    /** Only Library.borrowBooks() should call this, after checking availability. */
+    void addLoan(Loan loan) {
+        loans.add(loan);
+    }
+
+    /** Copies this member currently has out (not yet returned), across every loan. */
     public int getBooksBorrowed() {
-        return booksBorrowed;
+        int total = 0;
+        for (Loan loan : loans) {
+            if (!loan.isReturned()) {
+                total += loan.getQuantity();
+            }
+        }
+        return total;
     }
 
-    public void setBooksBorrowed(int booksBorrowed) {
-        this.booksBorrowed = booksBorrowed;
-    }
-
+    /** Late returns so far: one penalty per loan that came back after its due date. */
     public int getPenalties() {
-        return penalties;
+        int total = 0;
+        for (Loan loan : loans) {
+            if (loan.isPenalized()) {
+                total++;
+            }
+        }
+        return total;
     }
 
-    public void setPenalties(int penalties) {
-        this.penalties = penalties;
+    /** The membership start date as a LocalDate, or null if it isn't set/valid. */
+    public LocalDate getJoinLocalDate() {
+        return parse(joinDate);
+    }
+
+    /** The membership end date as a LocalDate, or null if it isn't set/valid. */
+    public LocalDate getEndLocalDate() {
+        return parse(endDate);
+    }
+
+    private static LocalDate parse(String text) {
+        try {
+            return LocalDate.parse(text.trim(), DATE_FORMAT);
+        } catch (DateTimeParseException | NullPointerException e) {
+            return null;
+        }
     }
 }

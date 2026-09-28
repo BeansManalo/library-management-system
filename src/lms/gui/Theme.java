@@ -1,5 +1,12 @@
 package lms.gui;
 
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.ListSelectionModel;
+import javax.swing.border.LineBorder;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableModel;
+
 import java.awt.Color;
 import java.awt.Font;
 import javax.swing.JLabel;
@@ -77,5 +84,38 @@ final class Theme {
         label.setForeground(TEXT_PRIMARY);
         label.setBorder(new EmptyBorder(3, 9, 3, 9));
         return label;
+    }
+
+    /** A compact, read-only-looking table in the app's style; widths are relative column weights. */
+    static JTable table(TableModel model, int... widths) {
+        JTable t = new JTable(model);
+        t.setFont(FONT_CARD_SUB);
+        t.setForeground(TEXT_PRIMARY);
+        t.setRowHeight(20);
+        t.setGridColor(DIVIDER);
+        t.setShowVerticalLines(false);
+        t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        t.setSelectionBackground(CARD_SELECTED);
+        t.setSelectionForeground(TEXT_PRIMARY);
+        t.setFillsViewportHeight(true);
+        t.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        // Numbers (quantity, copies free) centered so they don't run into the next column.
+        DefaultTableCellRenderer centered = new DefaultTableCellRenderer();
+        centered.setHorizontalAlignment(SwingConstants.CENTER);
+        t.setDefaultRenderer(Integer.class, centered);
+        t.getTableHeader().setReorderingAllowed(false);
+        t.getTableHeader().setFont(FONT_CARD_SUB_BOLD);
+        for (int i = 0; i < widths.length; i++) {
+            t.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+        }
+        return t;
+    }
+
+    /** Wraps a table in a scroll pane with the app's border and white background. */
+    static JScrollPane scroll(JTable table) {
+        JScrollPane pane = new JScrollPane(table);
+        pane.setBorder(new LineBorder(DIVIDER, 1));
+        pane.getViewport().setBackground(CARD_BG);
+        return pane;
     }
 }

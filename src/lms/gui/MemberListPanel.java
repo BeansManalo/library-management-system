@@ -6,10 +6,12 @@ import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.event.DocumentEvent;
@@ -23,27 +25,29 @@ public class MemberListPanel extends JPanel {
     private final ProportionalLayout layout = new ProportionalLayout();
     private JLabel banner;
     private JTextField txtSearch;
-    private CardListPanel cardListPanel;
+    private JList<Member> memberList;
     private PillButton btnView;
     private PillButton btnAddNew;
     private PillButton btnDelete;
 
-    // True when this screen is playing the "Add / Edit Members" role
-    // (Add New + Delete visible, double-click opens the editable form)
-    // instead of the plain read-only "Member List" role (double-click
-    // opens the read-only Member Details viewer instead, nothing here
-    // can change a member). Both roles share this one screen/card --
-    // see MainFrame.showMemberList() / showMemberManage() -- the same
-    // way AddEditMemberPanel already reuses one screen for both Add and
-    // Edit.
-    private boolean manageMode;
+    /**
+     * The three roles this one screen plays: LIST is the plain read-only
+     * browse/search role (double-click opens the Member Details viewer),
+     * MANAGE is "Add / Edit Members" (Add New + Delete visible, opens the
+     * editable form), PICK is the first step of borrowing a book -- the
+     * very same list, but choosing a row hands that member to the borrow
+     * screen -- and RETURN is the same for returning, where only members
+     * who have books out are listed. See MainFrame.showMemberList() /
+     * showMemberManage() / showBorrowMemberSelect() / showReturnMemberSelect().
+     */
+    public enum Mode { LIST, MANAGE, PICK, RETURN }
 
-    // Same idea as BookListPanel: cardPanels mirrors displayedMembers 1:1
-    // so a click can flip one card's selected look without rebuilding
-    // the whole list.
+    private Mode mode = Mode.LIST;
+
+    // Same idea as BookListPanel: displayedMembers is the filtered list
+    // memberList's model reads from -- memberList.getSelectedValue() /
+    // getSelectedIndex() is enough to know which one is selected.
     private List<Member> displayedMembers = new ArrayList<>();
-    private List<MemberCardPanel> cardPanels = new ArrayList<>();
-    private int selectedIndex = -1;
 
     /**
      * Create the panel.
@@ -55,13 +59,13 @@ public class MemberListPanel extends JPanel {
 
         // Catches clicks on the blank margins around the table and
         // buttons -- everywhere that isn't a specific control. The
-        // table's own blank space (below the last row) is handled
-        // separately below, since the scroll pane's viewport sits in
-        // front of this panel there.
+        // list's own blank space (below the last row) is handled
+        // separately below, on the scroll pane's viewport, since it
+        // sits in front of this panel there.
         addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                selectRow(-1);
+                memberList.clearSelection();
             }
         });
 
@@ -99,18 +103,59 @@ public class MemberListPanel extends JPanel {
             }
         });
 
-        cardListPanel = new CardListPanel();
-        JScrollPane scrollPane = new JScrollPane(cardListPanel);
+        // A JList instead of a scrollable panel of always-live row
+        // components: it only ever renders the rows actually on screen,
+        // reusing the one MemberCardPanel instance below as its cell
+        // renderer, so filtering/scrolling stays fast regardless of how
+        // many members there are (see BookCardPanel's class comment,
+        // which this mirrors).
+        memberList = new JList<>();
+        memberList.setCellRenderer(new MemberCardPanel());
+        // No setFixedCellHeight(): each row is sized from the renderer's
+        // own preferred height instead of a hardcoded guess, so it stays
+        // correct even if a row's content (and so its natural height)
+        // changes later.
+        memberList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        memberList.setBackground(Theme.CARD_BG);
+        // JList doesn't select anything on a click that misses every row
+        // (e.g. in the leftover space below the last one), so a plain
+        // click listener -- rather than a selection listener -- is what's
+        // needed to also clear the selection on that kind of click.
+        memberList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int index = memberList.locationToIndex(e.getPoint());
+                if (index >= 0 && memberList.getCellBounds(index, index).contains(e.getPoint())) {
+                    memberList.setSelectedIndex(index);
+                    if (e.getClickCount() == 2) {
+                        openMember(displayedMembers.get(index));
+                    }
+                } else {
+                    memberList.clearSelection();
+                }
+            }
+        });
+
+        JScrollPane scrollPane = new JScrollPane(memberList);
         scrollPane.setBorder(new LineBorder(Theme.DIVIDER, 1));
         scrollPane.getVerticalScrollBar().setUnitIncrement(24);
         scrollPane.getViewport().setBackground(Theme.CARD_BG);
         place(scrollPane, 20, 72, 430, 212);
         add(scrollPane);
-        CardListPanel.makeBackgroundDeselectable(scrollPane, cardListPanel, () -> selectRow(-1));
+        // Clicking the scroll pane's own background -- the gap below the
+        // last row when the list doesn't fill the visible height --
+        // deselects the current row, the same way clicking empty space
+        // around a file list normally does.
+        scrollPane.getViewport().addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                memberList.clearSelection();
+            }
+        });
 
         // Visible in both roles, at the top of the button column so
         // there's no dead space above it when Add New / Delete are
-        // hidden -- see setManageMode() for the VIEW/EDIT label swap.
+        // hidden -- see setMode() for the VIEW/EDIT label swap.
         btnView = new PillButton("VIEW");
         place(btnView, 460, 72, 150, 30);
         btnView.addActionListener(e -> {
@@ -122,7 +167,7 @@ public class MemberListPanel extends JPanel {
         add(btnView);
 
         // Add New / Delete are the management role's buttons only --
-        // see setManageMode() -- hidden by default so this screen opens
+        // see setMode() -- hidden by default so this screen opens
         // as the plain read-only list.
         btnAddNew = new PillButton("ADD NEW");
         place(btnAddNew, 460, 110, 150, 30);
@@ -140,31 +185,25 @@ public class MemberListPanel extends JPanel {
         btnBack.addActionListener(e -> mainFrame.showCard(MainFrame.CARD_DASHBOARD));
         add(btnBack);
 
-        setManageMode(false);
+        setMode(Mode.LIST);
     }
 
     private void place(java.awt.Component c, int x, int y, int w, int h) {
         layout.put(c, x, y, w, h);
     }
 
-    /**
-     * Switches this screen between the plain read-only "Member List"
-     * role and the "Add / Edit Members" management role: only the
-     * management role shows Add New / Delete, and only it opens the
-     * editable form on double-click (the plain list opens the read-only
-     * viewer instead). Called by MainFrame right before showing this
-     * card -- see MainFrame.showMemberList() / showMemberManage().
-     */
-    public void setManageMode(boolean manageMode) {
-        this.manageMode = manageMode;
-        banner.setText(manageMode ? "ADD / EDIT MEMBERS" : "LIST OF MEMBERS");
-        btnView.setText(manageMode ? "EDIT" : "VIEW");
-        btnAddNew.setVisible(manageMode);
-        btnDelete.setVisible(manageMode);
+    /** Switches which of the three roles (see {@link Mode}) this screen plays. */
+    public void setMode(Mode mode) {
+        this.mode = mode;
+        boolean choosing = mode == Mode.PICK || mode == Mode.RETURN;
+        banner.setText(mode == Mode.MANAGE ? "ADD / EDIT MEMBERS" : choosing ? "SELECT MEMBER" : "LIST OF MEMBERS");
+        btnView.setText(mode == Mode.MANAGE ? "EDIT" : choosing ? "SELECT" : "VIEW");
+        btnAddNew.setVisible(mode == Mode.MANAGE);
+        btnDelete.setVisible(mode == Mode.MANAGE);
     }
 
     /**
-     * Reloads the card list from the shared Library, applying the current
+     * Reloads the list from the shared Library, applying the current
      * search text as a filter. Called on every keystroke in the search
      * box, and by MainFrame every time this screen is shown (see
      * MainFrame.showCard) so the list never shows stale data.
@@ -174,40 +213,26 @@ public class MemberListPanel extends JPanel {
 
         displayedMembers = new ArrayList<>();
         for (Member member : mainFrame.getLibrary().getMembers()) {
-            if (query.isEmpty() || matches(member, query)) {
+            boolean hasBooksOut = mode != Mode.RETURN || member.getBooksBorrowed() > 0;
+            if (hasBooksOut && (query.isEmpty() || matches(member, query))) {
                 displayedMembers.add(member);
             }
         }
 
-        selectedIndex = -1;
-        cardPanels = new ArrayList<>();
-        cardListPanel.removeAll();
-        for (int i = 0; i < displayedMembers.size(); i++) {
-            Member member = displayedMembers.get(i);
-            int rowIndex = i;
-            MemberCardPanel card = new MemberCardPanel(member,
-                () -> selectRow(rowIndex),
-                () -> openMember(member));
-            cardPanels.add(card);
-            cardListPanel.add(card);
-        }
-        cardListPanel.revalidate();
-        cardListPanel.repaint();
+        // Just hands the JList plain Member references, not components --
+        // the actual row visuals only get built when a row scrolls into
+        // view (see the cell renderer set up above).
+        memberList.setListData(displayedMembers.toArray(new Member[0]));
+        memberList.clearSelection();
     }
 
-    /** Double-click target: the editable form in manage mode, the read-only viewer otherwise. */
+    /** Double-click target: depends on the current role (see {@link Mode}). */
     private void openMember(Member member) {
-        if (manageMode) {
-            mainFrame.showMemberForm(member);
-        } else {
-            mainFrame.showMemberDetail(member);
-        }
-    }
-
-    private void selectRow(int index) {
-        selectedIndex = index;
-        for (int i = 0; i < cardPanels.size(); i++) {
-            cardPanels.get(i).setSelected(i == index);
+        switch (mode) {
+            case MANAGE -> mainFrame.showMemberForm(member);
+            case PICK -> mainFrame.showBorrowBook(member);
+            case RETURN -> mainFrame.showReturnBook(member);
+            default -> mainFrame.showMemberDetail(member);
         }
     }
 
@@ -230,6 +255,12 @@ public class MemberListPanel extends JPanel {
         if (selected == null) {
             return;
         }
+        if (selected.getBooksBorrowed() > 0) {
+            JOptionPane.showMessageDialog(this,
+                selected.getName() + " still has " + selected.getBooksBorrowed() + " borrowed book(s).\nThey can be deleted once everything is returned.",
+                "Cannot Delete", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
         int choice = JOptionPane.showConfirmDialog(this,
             "Delete \"" + selected.getName() + "\"?",
@@ -246,14 +277,15 @@ public class MemberListPanel extends JPanel {
      * dialog instead of an exception) if nothing is selected.
      */
     private Member getSelectedMember() {
-        if (selectedIndex < 0 || selectedIndex >= displayedMembers.size()) {
+        Member selected = memberList.getSelectedValue();
+        if (selected == null) {
             JOptionPane.showMessageDialog(this,
                 "Please select a member first.",
                 "No Selection",
                 JOptionPane.WARNING_MESSAGE);
             return null;
         }
-        return displayedMembers.get(selectedIndex);
+        return selected;
     }
 
     /**

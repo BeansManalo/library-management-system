@@ -3,10 +3,13 @@ package lms.gui;
 import java.awt.CardLayout;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.time.LocalDate;
+import java.util.List;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import lms.core.Book;
 import lms.core.Library;
+import lms.core.Loan;
 import lms.core.Member;
 
 @SuppressWarnings("serial")
@@ -22,6 +25,10 @@ public class MainFrame extends JFrame {
     public static final String CARD_ADD_EDIT_MEMBER = "ADD_EDIT_MEMBER";
     public static final String CARD_BOOK_DETAIL = "BOOK_DETAIL";
     public static final String CARD_MEMBER_DETAIL = "MEMBER_DETAIL";
+    public static final String CARD_BORROW_BOOK = "BORROW_BOOK";
+    public static final String CARD_RETURN_BOOK = "RETURN_BOOK";
+    public static final String CARD_BORROW_CONFIRM = "BORROW_CONFIRM";
+    public static final String CARD_RETURN_CONFIRM = "RETURN_CONFIRM";
 
     private JPanel contentPane;
     private CardLayout cardLayout;
@@ -38,6 +45,10 @@ public class MainFrame extends JFrame {
     private AddEditMemberPanel addEditMemberPanel;
     private BookDetailPanel bookDetailPanel;
     private MemberDetailPanel memberDetailPanel;
+    private BorrowBookPanel borrowBookPanel;
+    private ReturnBookPanel returnBookPanel;
+    private BorrowConfirmPanel borrowConfirmPanel;
+    private ReturnConfirmPanel returnConfirmPanel;
 
     /**
      * Create the frame.
@@ -85,6 +96,22 @@ public class MainFrame extends JFrame {
         memberDetailPanel = new MemberDetailPanel();
         memberDetailPanel.setMainFrame(this);
         contentPane.add(memberDetailPanel, CARD_MEMBER_DETAIL);
+
+        borrowBookPanel = new BorrowBookPanel();
+        borrowBookPanel.setMainFrame(this);
+        contentPane.add(borrowBookPanel, CARD_BORROW_BOOK);
+
+        returnBookPanel = new ReturnBookPanel();
+        returnBookPanel.setMainFrame(this);
+        contentPane.add(returnBookPanel, CARD_RETURN_BOOK);
+
+        borrowConfirmPanel = new BorrowConfirmPanel();
+        borrowConfirmPanel.setMainFrame(this);
+        contentPane.add(borrowConfirmPanel, CARD_BORROW_CONFIRM);
+
+        returnConfirmPanel = new ReturnConfirmPanel();
+        returnConfirmPanel.setMainFrame(this);
+        contentPane.add(returnConfirmPanel, CARD_RETURN_CONFIRM);
 
         cardLayout.show(contentPane, CARD_DASHBOARD);
 
@@ -149,13 +176,13 @@ public class MainFrame extends JFrame {
 
     /** Opens the Member List in its plain, read-only browse/search role. */
     public void showMemberList() {
-        memberListPanel.setManageMode(false);
+        memberListPanel.setMode(MemberListPanel.Mode.LIST);
         showCard(CARD_MEMBER_LIST);
     }
 
     /** Opens the same Member List screen in its "Add / Edit Members" management role. */
     public void showMemberManage() {
-        memberListPanel.setManageMode(true);
+        memberListPanel.setMode(MemberListPanel.Mode.MANAGE);
         showCard(CARD_MEMBER_LIST);
     }
 
@@ -169,5 +196,42 @@ public class MainFrame extends JFrame {
     public void showMemberDetail(Member member) {
         memberDetailPanel.loadMember(member);
         showCard(CARD_MEMBER_DETAIL);
+    }
+
+    /** Borrowing, step 1: the Member List again, in "pick one" mode. */
+    public void showBorrowMemberSelect() {
+        memberListPanel.setMode(MemberListPanel.Mode.PICK);
+        showCard(CARD_MEMBER_LIST);
+    }
+
+    /** Borrowing, step 2: choose the books for this member (stays put if they can't borrow). */
+    public void showBorrowBook(Member member) {
+        if (borrowBookPanel.startFor(member)) {
+            showCard(CARD_BORROW_BOOK);
+        }
+    }
+
+    /** Borrowing, step 3: review what's about to be recorded, then accept or decline. */
+    public void showBorrowConfirm(Member member, List<Loan> loans) {
+        borrowConfirmPanel.load(member, loans);
+        showCard(CARD_BORROW_CONFIRM);
+    }
+
+    /** Returning, step 1: the Member List again, in "pick one" mode -- only members with books out. */
+    public void showReturnMemberSelect() {
+        memberListPanel.setMode(MemberListPanel.Mode.RETURN);
+        showCard(CARD_MEMBER_LIST);
+    }
+
+    /** Returning, step 2: choose which of this member's borrowed books are coming back. */
+    public void showReturnBook(Member member) {
+        returnBookPanel.startFor(member);
+        showCard(CARD_RETURN_BOOK);
+    }
+
+    /** Returning, step 3: review what's about to be recorded, then accept or decline. */
+    public void showReturnConfirm(Member member, List<Library.Return> returns, LocalDate returnDate) {
+        returnConfirmPanel.load(member, returns, returnDate);
+        showCard(CARD_RETURN_CONFIRM);
     }
 }

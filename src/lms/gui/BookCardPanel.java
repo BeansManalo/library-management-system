@@ -3,13 +3,14 @@ package lms.gui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.ListCellRenderer;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
@@ -18,50 +19,62 @@ import lms.core.Book;
 /**
  * One row of the Book List screen: cover glyph, title/author/genre, the
  * ISBN in the top-right corner, copy counts on the left, publisher/date
- * in the bottom-right -- laid out with real layout managers (not fixed
- * bounds) so the row stretches cleanly to the scroll pane's width.
+ * in the bottom-right.
+ *
+ * One instance is built once per screen and reused as the JList's
+ * ListCellRenderer for every row (see BookListPanel) -- update() just
+ * changes the existing labels' text instead of rebuilding this whole
+ * panel tree per book, and JList itself only ever calls the renderer
+ * for rows that are actually on screen. That combination is what keeps
+ * the list responsive on every keystroke of the search box no matter
+ * how many books there are, unlike the old design where every row was
+ * its own always-live JPanel sitting in a plain scrollable panel.
  *
  * The stat column sits in BorderLayout.WEST of the *whole* card (not
  * just alongside the icon row), so its divider border runs the full
  * card height instead of stopping partway.
  */
 @SuppressWarnings("serial")
-public class BookCardPanel extends JPanel {
+public class BookCardPanel extends JPanel implements ListCellRenderer<Book> {
 
     private boolean selected;
 
-    public BookCardPanel(Book book, Runnable onSelect, Runnable onOpen) {
+    private final JLabel isbnLabel = new JLabel();
+    private final JLabel titleLabel = new JLabel();
+    private final JLabel authorLabel = new JLabel();
+    private final JLabel genreLabel = new JLabel();
+    private final JLabel publisherLabel = new JLabel();
+    private final JLabel dateLabel = new JLabel();
+    private final JLabel ownedValue = new JLabel();
+    private final JLabel availableValue = new JLabel();
+
+    public BookCardPanel() {
         setLayout(new BorderLayout());
         setOpaque(false);
         setBorder(new EmptyBorder(3, 8, 3, 8));
 
         JPanel rightSide = new JPanel(new BorderLayout());
         rightSide.setOpaque(false);
-        rightSide.add(buildTopRow(book), BorderLayout.NORTH);
-        rightSide.add(buildBodyRow(book), BorderLayout.CENTER);
-        rightSide.add(buildBottomRow(book), BorderLayout.SOUTH);
+        rightSide.add(buildTopRow(), BorderLayout.NORTH);
+        rightSide.add(buildBodyRow(), BorderLayout.CENTER);
+        rightSide.add(buildBottomRow(), BorderLayout.SOUTH);
 
-        add(CardListPanel.statColumn(
-            "Currently Owned", String.valueOf(book.getTotalCopies()),
-            "Available", String.valueOf(book.getAvailableCopies())), BorderLayout.WEST);
+        add(CardListPanel.statColumn("Currently Owned", ownedValue, "Available", availableValue), BorderLayout.WEST);
         add(rightSide, BorderLayout.CENTER);
-
-        CardListPanel.makeClickable(this, onSelect, onOpen);
     }
 
-    private JPanel buildTopRow(Book book) {
-        JLabel isbn = new JLabel(text(book.getIsbn()));
-        isbn.setFont(Theme.FONT_CARD_ITALIC);
-        isbn.setForeground(Theme.TEXT_PRIMARY);
-        isbn.setBorder(new MatteBorder(0, 0, 1, 0, Theme.TEXT_MUTED));
+    private JPanel buildTopRow() {
+        isbnLabel.setFont(Theme.FONT_CARD_ITALIC);
+        isbnLabel.setForeground(Theme.TEXT_PRIMARY);
+        isbnLabel.setBorder(new MatteBorder(0, 0, 1, 0, Theme.TEXT_MUTED));
 
         JPanel row = new JPanel(new BorderLayout());
         row.setOpaque(false);
-        row.add(isbn, BorderLayout.EAST);
+        row.add(isbnLabel, BorderLayout.EAST);
         return row;
     }
 
-    private JPanel buildBodyRow(Book book) {
+    private JPanel buildBodyRow() {
         JLabel icon = new JLabel(RowIcons.book(30, Color.BLACK));
         icon.setBorder(new EmptyBorder(0, 6, 0, 8));
         icon.setVerticalAlignment(SwingConstants.TOP);
@@ -70,24 +83,21 @@ public class BookCardPanel extends JPanel {
         textStack.setOpaque(false);
         textStack.setLayout(new BoxLayout(textStack, BoxLayout.Y_AXIS));
 
-        JLabel title = new JLabel(text(book.getTitle()));
-        title.setFont(Theme.FONT_CARD_TITLE);
-        title.setForeground(Theme.TEXT_PRIMARY);
-        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        titleLabel.setFont(Theme.FONT_CARD_TITLE);
+        titleLabel.setForeground(Theme.TEXT_PRIMARY);
+        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel author = new JLabel(text(book.getAuthor()));
-        author.setFont(Theme.FONT_CARD_ITALIC);
-        author.setForeground(Theme.TEXT_MUTED);
-        author.setAlignmentX(Component.LEFT_ALIGNMENT);
+        authorLabel.setFont(Theme.FONT_CARD_ITALIC);
+        authorLabel.setForeground(Theme.TEXT_MUTED);
+        authorLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel genre = new JLabel(text(book.getGenre()));
-        genre.setFont(Theme.FONT_CARD_MUTED);
-        genre.setForeground(Theme.TEXT_MUTED);
-        genre.setAlignmentX(Component.LEFT_ALIGNMENT);
+        genreLabel.setFont(Theme.FONT_CARD_MUTED);
+        genreLabel.setForeground(Theme.TEXT_MUTED);
+        genreLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        textStack.add(title);
-        textStack.add(author);
-        textStack.add(genre);
+        textStack.add(titleLabel);
+        textStack.add(authorLabel);
+        textStack.add(genreLabel);
 
         JPanel iconText = new JPanel(new BorderLayout());
         iconText.setOpaque(false);
@@ -96,19 +106,19 @@ public class BookCardPanel extends JPanel {
         return iconText;
     }
 
-    private JPanel buildBottomRow(Book book) {
-        JLabel publisher = new JLabel(text(book.getPublisher()), SwingConstants.RIGHT);
-        publisher.setFont(Theme.FONT_CARD_SUB_BOLD);
-        publisher.setForeground(Theme.TEXT_PRIMARY);
+    private JPanel buildBottomRow() {
+        publisherLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+        publisherLabel.setFont(Theme.FONT_CARD_SUB_BOLD);
+        publisherLabel.setForeground(Theme.TEXT_PRIMARY);
 
-        JLabel date = new JLabel(text(book.getPublicationDate()), SwingConstants.RIGHT);
-        date.setFont(Theme.FONT_CARD_SUB);
-        date.setForeground(Theme.TEXT_MUTED);
+        dateLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+        dateLabel.setFont(Theme.FONT_CARD_SUB);
+        dateLabel.setForeground(Theme.TEXT_MUTED);
 
         JPanel stack = new JPanel(new GridLayout(2, 1));
         stack.setOpaque(false);
-        stack.add(publisher);
-        stack.add(date);
+        stack.add(publisherLabel);
+        stack.add(dateLabel);
 
         JPanel row = new JPanel(new BorderLayout());
         row.setOpaque(false);
@@ -116,18 +126,28 @@ public class BookCardPanel extends JPanel {
         return row;
     }
 
+    /** Refreshes every label from {@code book} and this row's selected look -- no new components. */
+    private void update(Book book, boolean selected) {
+        this.selected = selected;
+        isbnLabel.setText(text(book.getIsbn()));
+        titleLabel.setText(text(book.getTitle()));
+        authorLabel.setText(text(book.getAuthor()));
+        genreLabel.setText(text(book.getGenre()));
+        publisherLabel.setText(text(book.getPublisher()));
+        dateLabel.setText(text(book.getPublicationDate()));
+        ownedValue.setText(String.valueOf(book.getTotalCopies()));
+        availableValue.setText(String.valueOf(book.getAvailableCopies()));
+    }
+
     private static String text(String value) {
         return (value == null || value.isEmpty()) ? "\u2014" : value;
     }
 
-    void setSelected(boolean selected) {
-        this.selected = selected;
-        repaint();
-    }
-
     @Override
-    public Dimension getMaximumSize() {
-        return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+    public Component getListCellRendererComponent(JList<? extends Book> list, Book value,
+            int index, boolean isSelected, boolean cellHasFocus) {
+        update(value, isSelected);
+        return this;
     }
 
     @Override

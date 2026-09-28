@@ -15,6 +15,8 @@ public class DashboardPanel extends JPanel {
     private PillButton btnAddEditBooks;
     private PillButton btnMemberList;
     private PillButton btnAddEditMembers;
+    private PillButton btnBorrowBook;
+    private PillButton btnReturnBook;
 
     /**
      * Create the panel.
@@ -53,6 +55,20 @@ public class DashboardPanel extends JPanel {
         btnAddEditMembers.addActionListener(e -> mainFrame.showMemberManage());
         // Same reasoning as btnAddEditBooks above.
 
+        btnBorrowBook = new PillButton("Borrow Book");
+        btnBorrowBook.setIcon(RowIcons.book(18, java.awt.Color.WHITE), 10);
+        btnBorrowBook.addActionListener(e -> mainFrame.showBorrowMemberSelect());
+        // Borrowing starts by choosing a member, then the books -- see
+        // MainFrame.showBorrowMemberSelect().
+
+        btnReturnBook = new PillButton("Return Book");
+        btnReturnBook.setIcon(RowIcons.book(18, java.awt.Color.WHITE), 10);
+        btnReturnBook.addActionListener(e -> mainFrame.showReturnMemberSelect());
+        // Same steps as btnBorrowBook above, but the member list only shows
+        // members with books out -- see MainFrame.showReturnMemberSelect().
+        // Kept as a separate button/flow rather than one combined
+        // "Borrow / Return" screen, since the two have different forms.
+
         GroupLayout gl_this = new GroupLayout(buttonArea);
         gl_this.setHorizontalGroup(
             gl_this.createSequentialGroup()
@@ -61,7 +77,9 @@ public class DashboardPanel extends JPanel {
                     .addComponent(btnBookList, GroupLayout.PREFERRED_SIZE, 275, GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnAddEditBooks, GroupLayout.PREFERRED_SIZE, 275, GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnMemberList, GroupLayout.PREFERRED_SIZE, 275, GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnAddEditMembers, GroupLayout.PREFERRED_SIZE, 275, GroupLayout.PREFERRED_SIZE))
+                    .addComponent(btnAddEditMembers, GroupLayout.PREFERRED_SIZE, 275, GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnBorrowBook, GroupLayout.PREFERRED_SIZE, 275, GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnReturnBook, GroupLayout.PREFERRED_SIZE, 275, GroupLayout.PREFERRED_SIZE))
                 .addGap(0, 0, Short.MAX_VALUE)
         );
         gl_this.setVerticalGroup(
@@ -74,6 +92,10 @@ public class DashboardPanel extends JPanel {
                 .addComponent(btnMemberList, GroupLayout.PREFERRED_SIZE, 38, GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(ComponentPlacement.RELATED)
                 .addComponent(btnAddEditMembers, GroupLayout.PREFERRED_SIZE, 38, GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(ComponentPlacement.UNRELATED)
+                .addComponent(btnBorrowBook, GroupLayout.PREFERRED_SIZE, 38, GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(ComponentPlacement.RELATED)
+                .addComponent(btnReturnBook, GroupLayout.PREFERRED_SIZE, 38, GroupLayout.PREFERRED_SIZE)
                 .addGap(0, 0, Short.MAX_VALUE)
         );
         buttonArea.setLayout(gl_this);

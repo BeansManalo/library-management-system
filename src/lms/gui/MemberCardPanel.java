@@ -3,13 +3,14 @@ package lms.gui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.ListCellRenderer;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
@@ -17,48 +18,57 @@ import lms.core.Member;
 
 /**
  * One row of the Member List screen: avatar glyph, name/email/phone, the
- * member ID in the top-right corner, join/end dates on the left, and
- * books-borrowed/penalties in the bottom-right. Mirrors BookCardPanel's
- * structure (including the WEST-spanning stat column, so its divider
- * runs the full card height) so the two lists read as one family.
+ * member ID alone in the top-right corner, join/end dates on the left,
+ * and the date of birth in the bottom-left, facing the books-borrowed/
+ * penalties pair in the bottom-right -- out of the way of the contact
+ * details, and a labelled field like the ones opposite it.
+ *
+ * Mirrors BookCardPanel's structure and, like it, is built once and
+ * reused as the JList's ListCellRenderer for every row instead of being
+ * rebuilt per member (see BookCardPanel's class comment for why).
  */
 @SuppressWarnings("serial")
-public class MemberCardPanel extends JPanel {
+public class MemberCardPanel extends JPanel implements ListCellRenderer<Member> {
 
     private boolean selected;
 
-    public MemberCardPanel(Member member, Runnable onSelect, Runnable onOpen) {
+    private final JLabel memberIdLabel = new JLabel();
+    private final JLabel nameLabel = new JLabel();
+    private final JLabel emailLabel = new JLabel();
+    private final JLabel phoneLabel = new JLabel();
+    private final JLabel bornLabel = new JLabel();
+    private final JLabel borrowedLabel = new JLabel();
+    private final JLabel penaltiesLabel = new JLabel();
+    private final JLabel joinValue = new JLabel();
+    private final JLabel endValue = new JLabel();
+
+    public MemberCardPanel() {
         setLayout(new BorderLayout());
         setOpaque(false);
         setBorder(new EmptyBorder(3, 8, 3, 8));
 
         JPanel rightSide = new JPanel(new BorderLayout());
         rightSide.setOpaque(false);
-        rightSide.add(buildTopRow(member), BorderLayout.NORTH);
-        rightSide.add(buildBodyRow(member), BorderLayout.CENTER);
-        rightSide.add(buildBottomRow(member), BorderLayout.SOUTH);
+        rightSide.add(buildTopRow(), BorderLayout.NORTH);
+        rightSide.add(buildBodyRow(), BorderLayout.CENTER);
+        rightSide.add(buildBottomRow(), BorderLayout.SOUTH);
 
-        add(CardListPanel.statColumn(
-            "Join Date", text(member.getJoinDate()),
-            "End Date", text(member.getEndDate())), BorderLayout.WEST);
+        add(CardListPanel.statColumn("Join Date", joinValue, "End Date", endValue), BorderLayout.WEST);
         add(rightSide, BorderLayout.CENTER);
-
-        CardListPanel.makeClickable(this, onSelect, onOpen);
     }
 
-    private JPanel buildTopRow(Member member) {
-        JLabel memberId = new JLabel(text(member.getMemberId()));
-        memberId.setFont(Theme.FONT_CARD_ITALIC);
-        memberId.setForeground(Theme.TEXT_PRIMARY);
-        memberId.setBorder(new MatteBorder(0, 0, 1, 0, Theme.TEXT_MUTED));
+    private JPanel buildTopRow() {
+        memberIdLabel.setFont(Theme.FONT_CARD_ITALIC);
+        memberIdLabel.setForeground(Theme.TEXT_PRIMARY);
+        memberIdLabel.setBorder(new MatteBorder(0, 0, 1, 0, Theme.TEXT_MUTED));
 
         JPanel row = new JPanel(new BorderLayout());
         row.setOpaque(false);
-        row.add(memberId, BorderLayout.EAST);
+        row.add(memberIdLabel, BorderLayout.EAST);
         return row;
     }
 
-    private JPanel buildBodyRow(Member member) {
+    private JPanel buildBodyRow() {
         JLabel icon = new JLabel(RowIcons.person(30, Color.BLACK));
         icon.setBorder(new EmptyBorder(0, 6, 0, 8));
         icon.setVerticalAlignment(SwingConstants.TOP);
@@ -67,24 +77,21 @@ public class MemberCardPanel extends JPanel {
         textStack.setOpaque(false);
         textStack.setLayout(new BoxLayout(textStack, BoxLayout.Y_AXIS));
 
-        JLabel name = new JLabel(text(member.getName()));
-        name.setFont(Theme.FONT_CARD_TITLE);
-        name.setForeground(Theme.TEXT_PRIMARY);
-        name.setAlignmentX(Component.LEFT_ALIGNMENT);
+        nameLabel.setFont(Theme.FONT_CARD_TITLE);
+        nameLabel.setForeground(Theme.TEXT_PRIMARY);
+        nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel email = new JLabel(text(member.getEmail()));
-        email.setFont(Theme.FONT_CARD_ITALIC);
-        email.setForeground(Theme.TEXT_MUTED);
-        email.setAlignmentX(Component.LEFT_ALIGNMENT);
+        emailLabel.setFont(Theme.FONT_CARD_ITALIC);
+        emailLabel.setForeground(Theme.TEXT_MUTED);
+        emailLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel phone = new JLabel(text(member.getContactNumber()));
-        phone.setFont(Theme.FONT_CARD_MUTED);
-        phone.setForeground(Theme.TEXT_MUTED);
-        phone.setAlignmentX(Component.LEFT_ALIGNMENT);
+        phoneLabel.setFont(Theme.FONT_CARD_MUTED);
+        phoneLabel.setForeground(Theme.TEXT_MUTED);
+        phoneLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        textStack.add(name);
-        textStack.add(email);
-        textStack.add(phone);
+        textStack.add(nameLabel);
+        textStack.add(emailLabel);
+        textStack.add(phoneLabel);
 
         JPanel iconText = new JPanel(new BorderLayout());
         iconText.setOpaque(false);
@@ -93,38 +100,57 @@ public class MemberCardPanel extends JPanel {
         return iconText;
     }
 
-    private JPanel buildBottomRow(Member member) {
-        JLabel borrowed = new JLabel("Books Borrowed: " + member.getBooksBorrowed(), SwingConstants.RIGHT);
-        borrowed.setFont(Theme.FONT_CARD_ITALIC);
-        borrowed.setForeground(Theme.TEXT_PRIMARY);
+    private JPanel buildBottomRow() {
+        borrowedLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+        borrowedLabel.setFont(Theme.FONT_CARD_ITALIC);
+        borrowedLabel.setForeground(Theme.TEXT_PRIMARY);
 
-        JLabel penalties = new JLabel("Penalties: " + member.getPenalties(), SwingConstants.RIGHT);
-        penalties.setFont(Theme.FONT_CARD_ITALIC);
-        penalties.setForeground(member.getPenalties() > 0 ? Theme.NAVY : Theme.TEXT_MUTED);
+        penaltiesLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+        penaltiesLabel.setFont(Theme.FONT_CARD_ITALIC);
 
         JPanel stack = new JPanel(new GridLayout(2, 1));
         stack.setOpaque(false);
-        stack.add(borrowed);
-        stack.add(penalties);
+        stack.add(borrowedLabel);
+        stack.add(penaltiesLabel);
+
+        // Bottom-aligned so it sits level with the last line opposite it,
+        // and inset to line up under the avatar above.
+        bornLabel.setFont(Theme.FONT_CARD_ITALIC);
+        bornLabel.setForeground(Theme.TEXT_MUTED);
+        bornLabel.setVerticalAlignment(SwingConstants.BOTTOM);
+        bornLabel.setBorder(new EmptyBorder(0, 6, 0, 0));
 
         JPanel row = new JPanel(new BorderLayout());
         row.setOpaque(false);
+        row.add(bornLabel, BorderLayout.WEST);
         row.add(stack, BorderLayout.EAST);
         return row;
+    }
+
+    /** Refreshes every label from {@code member} and this row's selected look -- no new components. */
+    private void update(Member member, boolean selected) {
+        this.selected = selected;
+        memberIdLabel.setText(text(member.getMemberId()));
+        nameLabel.setText(text(member.getName()));
+        emailLabel.setText(text(member.getEmail()));
+        phoneLabel.setText(text(member.getContactNumber()));
+        bornLabel.setText("Date of Birth: " + text(member.getBirthDate()));
+        borrowedLabel.setText("Books Borrowed: " + member.getBooksBorrowed());
+        penaltiesLabel.setText("Penalties: " + member.getPenalties());
+        penaltiesLabel.setForeground(member.getPenalties() > 0 ? Theme.NAVY : Theme.TEXT_MUTED);
+        joinValue.setText(text(member.getJoinDate()));
+        endValue.setText(text(member.getEndDate()));
     }
 
     private static String text(String value) {
         return (value == null || value.isEmpty()) ? "\u2014" : value;
     }
 
-    void setSelected(boolean selected) {
-        this.selected = selected;
-        repaint();
-    }
-
     @Override
-    public Dimension getMaximumSize() {
-        return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+    public Component getListCellRendererComponent(JList<? extends Member> list, Member value,
+            int index, boolean isSelected, boolean cellHasFocus) {
+        update(value, isSelected);
+        return this;
     }
 
     @Override

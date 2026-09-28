@@ -13,6 +13,11 @@ import lms.core.ValidationException;
 @SuppressWarnings("serial")
 public class AddEditBookPanel extends JPanel {
 
+    // Was 160 -- widening to fill the column closes the dead gap that
+    // used to sit between the two columns and balances the margin on
+    // both sides of the form.
+    private static final int FIELD_WIDTH = 260;
+
     private MainFrame mainFrame;
     private final ProportionalLayout layout = new ProportionalLayout();
     private JLabel lblAddAndEditBooks;
@@ -67,7 +72,7 @@ public class AddEditBookPanel extends JPanel {
         JLabel tagsHint = new JLabel("Separate multiple tags with a comma");
         tagsHint.setFont(Theme.FONT_CARD_MUTED);
         tagsHint.setForeground(Theme.TEXT_MUTED);
-        place(tagsHint, 340, 236, 260, 14);
+        place(tagsHint, 340, 236, FIELD_WIDTH, 14);
         add(tagsHint);
 
         PillButton btnSave = new PillButton("SAVE");
@@ -105,7 +110,7 @@ public class AddEditBookPanel extends JPanel {
         text.setBorder(new javax.swing.border.CompoundBorder(
             new javax.swing.border.LineBorder(Theme.DIVIDER, 1),
             new javax.swing.border.EmptyBorder(2, 6, 2, 6)));
-        place(text, x, y + 18, 160, 24);
+        place(text, x, y + 18, FIELD_WIDTH, 24);
         add(text);
         return text;
     }
@@ -119,7 +124,7 @@ public class AddEditBookPanel extends JPanel {
         add(label);
 
         DatePickerField picker = new DatePickerField(format);
-        place(picker, x, y + 18, 160, 24);
+        place(picker, x, y + 18, FIELD_WIDTH, 24);
         add(picker);
         return picker;
     }
