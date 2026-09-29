@@ -9,7 +9,9 @@ import java.awt.event.MouseEvent;
 import javax.swing.JLabel;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 import javax.swing.ToolTipManager;
+import javax.swing.border.EmptyBorder;
 import lms.core.Book;
 
 /**
@@ -26,7 +28,9 @@ public class BookDetailPanel extends JPanel {
     private final ProportionalLayout layout = new ProportionalLayout();
 
     private JLabel banner;
-    private JLabel titleLabel;
+    private static final int TITLE_W = 420;
+
+    private FitLabel titleLabel;
     private JLabel authorLabel;
     private JLabel genreLabel;
     private JLabel isbnValue;
@@ -54,7 +58,11 @@ public class BookDetailPanel extends JPanel {
         titleLabel = new FitLabel().shrink(6);
         titleLabel.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 18));
         titleLabel.setForeground(Theme.TEXT_PRIMARY);
-        place(titleLabel, 100, 44, 420, 26);
+        // Tall enough for two lines and bottom-aligned, so a one-line title sits
+        // where it always did (see FitLabel.setWrappedText).
+        titleLabel.setVerticalAlignment(SwingConstants.BOTTOM);
+        titleLabel.setBorder(new EmptyBorder(0, 0, 2, 0));
+        place(titleLabel, 100, 36, TITLE_W, 34);
         add(titleLabel);
 
         authorLabel = new JLabel();
@@ -141,7 +149,7 @@ public class BookDetailPanel extends JPanel {
             return;
         }
 
-        titleLabel.setText(book.getTitle());
+        titleLabel.setWrappedText(book.getTitle(), TITLE_W);
         authorLabel.setText(book.getAuthor());
         genreLabel.setText(book.getGenre());
         isbnValue.setText(text(book.getIsbn()));

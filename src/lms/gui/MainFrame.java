@@ -3,13 +3,20 @@ package lms.gui;
 import java.awt.CardLayout;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.GraphicsConfiguration;
+import java.awt.Insets;
+import java.awt.Rectangle;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import javax.swing.AbstractAction;
 import javax.swing.JComponent;
@@ -50,6 +57,12 @@ public class MainFrame extends JFrame {
     // (see openDevMode()). Change it here.
     private static final String DEV_PASSCODE = "lms-dev";
 
+    // Settings > Resize Window offers the design size times each of these (so every size
+    // is 16:9), as long as it fits the screen with CHROME pixels to spare each way for the
+    // title bar and borders -- plus full screen.
+    private static final double[] SCALES = {1, 1.5, 2, 2.5, 3};
+    private static final int CHROME = 48;
+
     private JPanel contentPane;
     private CardLayout cardLayout;
     private boolean devMode; // unlocked for this run only
@@ -78,18 +91,30 @@ public class MainFrame extends JFrame {
      * Create the frame.
      */
     public MainFrame() {
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        // The X button asks before closing -- see confirmExit().
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                confirmExit();
+            }
+        });
         setTitle("Library Management System");
         setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
-        // Resizable (including maximize/full screen) -- every screen
-        // uses ProportionalLayout instead of fixed null-layout bounds,
-        // so the whole design scales with the window instead of
-        // clipping or leaving dead space at larger sizes.
-        setResizable(true);
-        setMinimumSize(new Dimension(480, 270));
+        // The screens are always laid out at NHD_SIZE; ScaledLayeredPane paints
+        // that scaled up to fit the window (see its class comment). The window
+        // can't be dragged to another size, only set from the hamburger menu's
+        // Settings (see openSettings()), so it is only ever a size that scales cleanly.
+        setResizable(false);
+        ScaledLayeredPane.install(this);
 
         cardLayout = new CardLayout();
-        contentPane = new JPanel(cardLayout);
+        contentPane = new JPanel(cardLayout) {
+            @Override
+            public void setBounds(int x, int y, int w, int h) {
+                super.setBounds(0, 0, NHD_SIZE.width, NHD_SIZE.height);
+            }
+        };
         contentPane.setBackground(Theme.APP_BG);
         setContentPane(contentPane);
 
@@ -202,6 +227,57 @@ public class MainFrame extends JFrame {
         setTitle("Library Management System  [DEV MODE \u2022 today is " + Member.DATE_FORMAT.format(Library.today()) + "]");
     }
 
+    /**
+     * Hamburger menu > Settings. The one setting for now is the window size: the
+     * normal size, larger ones of the same shape that fit this screen, or full screen.
+     */
+    public void openSettings() {
+        GraphicsConfiguration gc = getGraphicsConfiguration();
+        Rectangle screen = gc.getBounds();
+        Insets bars = Toolkit.getDefaultToolkit().getScreenInsets(gc); // taskbar and the like
+        int maxWidth = screen.width - bars.left - bars.right - CHROME;
+        int maxHeight = screen.height - bars.top - bars.bottom - CHROME;
+        List<Dimension> sizes = new ArrayList<>();
+        List<String> labels = new ArrayList<>();
+        for (double scale : SCALES) {
+            Dimension size = new Dimension((int) (NHD_SIZE.width * scale), (int) (NHD_SIZE.height * scale));
+            if (size.width <= maxWidth && size.height <= maxHeight) {
+                sizes.add(size);
+                labels.add(size.width + " \u00d7 " + size.height);
+            }
+        }
+        labels.add("Full Screen");
+        String current = isUndecorated() ? "Full Screen" : getRootPane().getWidth() + " \u00d7 " + getRootPane().getHeight();
+        int pick = labels.indexOf(JOptionPane.showInputDialog(this, "Resize window:", "Settings",
+            JOptionPane.PLAIN_MESSAGE, null, labels.toArray(), current));
+        if (pick >= 0) {
+            setWindowSize(pick < sizes.size() ? sizes.get(pick) : null);
+        }
+    }
+
+    /** Puts the window at {@code size} (its usable area, 16:9), centered on its screen -- or full screen if null. */
+    private void setWindowSize(Dimension size) {
+        Rectangle screen = getGraphicsConfiguration().getBounds();
+        dispose(); // a frame can only gain or lose its title bar while it has no window
+        setUndecorated(size == null);
+        if (size == null) {
+            setBounds(screen);
+        } else {
+            getRootPane().setPreferredSize(size);
+            pack();
+            setLocation(screen.x + (screen.width - getWidth()) / 2, screen.y + (screen.height - getHeight()) / 2);
+        }
+        setVisible(true);
+    }
+
+    /** Hamburger menu > Exit, and the window's X button: asks first, then closes the program. */
+    public void confirmExit() {
+        if (JOptionPane.showConfirmDialog(this, "Exit the Library Management System?", "Exit",
+                JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+            System.exit(0); // every change is already saved (see saveLibrary())
+        }
+    }
+
     /** The one shared Book/Member store for the whole app. */
     public Library getLibrary() {
         return library;
@@ -243,7 +319,7 @@ public class MainFrame extends JFrame {
      */
     public void importLibrary() {
         if (JOptionPane.showConfirmDialog(this,
-                "Loading a library replaces the current one and clears its autosaves. Continue?",
+                "Loading a library will overwrite your save file. Continue?",
                 "Load Library", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION) {
             return;
         }
@@ -262,7 +338,7 @@ public class MainFrame extends JFrame {
     /** Menu > Delete Library: erases the save file and every autosave, and empties the library. */
     public void deleteLibrary() {
         if (JOptionPane.showConfirmDialog(this,
-                "Delete the whole library and all its autosaves? This can't be undone.",
+                "Delete the whole library and your save file? This can't be undone.",
                 "Delete Library", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION) {
             return;
         }

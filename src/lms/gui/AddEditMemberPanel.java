@@ -201,6 +201,7 @@ public class AddEditMemberPanel extends JPanel {
             validateRequired(txtMemberId.getText(), txtFirstName.getText(), txtLastName.getText(),
                 txtBirthDate.getText(), txtContactNumber.getText(), txtEmail.getText(), txtAddress.getText(),
                 txtJoinDate.getText(), txtEndDate.getText());
+            mainFrame.getLibrary().checkMemberIdFree(txtMemberId.getText(), editingMember);
         } catch (ValidationException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Missing Information", JOptionPane.WARNING_MESSAGE);
             return;

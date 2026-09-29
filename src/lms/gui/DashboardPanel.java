@@ -146,12 +146,24 @@ public class DashboardPanel extends JPanel {
         platform.setBackground(Theme.NAVY);
         platform.addMouseListener(new MouseAdapter() { }); // clicks on it don't reach the overlay
 
+        PillButton btnSettings = new PillButton("Settings",
+            Theme.BLUE_ACCENT, Theme.BLUE_ACCENT.brighter(), Theme.BLUE_ACCENT.darker());
+        PillButton btnExit = new PillButton("Exit",
+            Theme.BLUE_ACCENT, Theme.BLUE_ACCENT.brighter(), Theme.BLUE_ACCENT.darker());
         PillButton btnSaveLibrary = new PillButton("Save Library",
             Theme.BLUE_ACCENT, Theme.BLUE_ACCENT.brighter(), Theme.BLUE_ACCENT.darker());
         PillButton btnLoadLibrary = new PillButton("Load Library",
             Theme.BLUE_ACCENT, Theme.BLUE_ACCENT.brighter(), Theme.BLUE_ACCENT.darker());
         PillButton btnDeleteLibrary = new PillButton("Delete Library",
             Theme.ALERT, Theme.ALERT.brighter(), Theme.ALERT.darker());
+        btnSettings.addActionListener(e -> {
+            setMenuOpen(false);
+            mainFrame.openSettings();
+        });
+        btnExit.addActionListener(e -> {
+            setMenuOpen(false);
+            mainFrame.confirmExit();
+        });
         btnSaveLibrary.addActionListener(e -> {
             setMenuOpen(false);
             mainFrame.exportLibrary();
@@ -170,9 +182,11 @@ public class DashboardPanel extends JPanel {
             gl_menu.createSequentialGroup()
                 .addGap(8)
                 .addGroup(gl_menu.createParallelGroup(Alignment.LEADING)
+                    .addComponent(btnSettings, GroupLayout.PREFERRED_SIZE, 150, GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnSaveLibrary, GroupLayout.PREFERRED_SIZE, 150, GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnLoadLibrary, GroupLayout.PREFERRED_SIZE, 150, GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnDeleteLibrary, GroupLayout.PREFERRED_SIZE, 150, GroupLayout.PREFERRED_SIZE))
+                    .addComponent(btnDeleteLibrary, GroupLayout.PREFERRED_SIZE, 150, GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnExit, GroupLayout.PREFERRED_SIZE, 150, GroupLayout.PREFERRED_SIZE))
                 .addGap(8)
         );
         gl_menu.setVerticalGroup(
@@ -184,6 +198,10 @@ public class DashboardPanel extends JPanel {
                 .addPreferredGap(ComponentPlacement.UNRELATED)
                 .addComponent(btnDeleteLibrary, GroupLayout.PREFERRED_SIZE, 32, GroupLayout.PREFERRED_SIZE)
                 .addGap(8, 8, Short.MAX_VALUE)
+                .addComponent(btnSettings, GroupLayout.PREFERRED_SIZE, 32, GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(ComponentPlacement.RELATED)
+                .addComponent(btnExit, GroupLayout.PREFERRED_SIZE, 32, GroupLayout.PREFERRED_SIZE)
+                .addGap(8)
         );
         platform.setLayout(gl_menu);
         menuOverlay.setLayout(new BorderLayout());

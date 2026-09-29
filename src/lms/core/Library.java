@@ -66,6 +66,37 @@ public class Library {
     }
 
     /**
+     * Throws if another member already has this Member ID (ignoring case and surrounding
+     * spaces). {@code self} is the member being edited or renewed, or null for a new one.
+     */
+    public void checkMemberIdFree(String memberId, Member self) throws ValidationException {
+        String id = memberId.trim();
+        for (Member other : members) {
+            if (other != self && id.equalsIgnoreCase(other.getMemberId())) {
+                throw new ValidationException("Member ID \"" + id + "\" already belongs to " + other.getName() + ".");
+            }
+        }
+    }
+
+    /**
+     * Throws if another book already has this ISBN. Case, spaces and hyphens don't count, so
+     * "978-0-13-468599-1" and "9780134685991" are the same book. {@code self} is the book
+     * being edited, or null for a new one.
+     */
+    public void checkIsbnFree(String isbn, Book self) throws ValidationException {
+        String key = isbnKey(isbn);
+        for (Book other : books) {
+            if (other != self && key.equals(isbnKey(other.getIsbn()))) {
+                throw new ValidationException("ISBN \"" + isbn.trim() + "\" already belongs to \"" + other.getTitle() + "\".");
+            }
+        }
+    }
+
+    private static String isbnKey(String isbn) {
+        return isbn.replaceAll("[\\s-]", "").toLowerCase();
+    }
+
+    /**
      * Records the given loans against a member and takes the copies off
      * the shelf. Everything is checked first, so it's all-or-nothing: if
      * any loan is invalid, nothing changes and the message says why.
@@ -175,11 +206,7 @@ public class Library {
         if (id.equalsIgnoreCase(member.getMemberId())) {
             throw new ValidationException("A renewed membership needs a new Member ID, different from the old one.");
         }
-        for (Member other : members) {
-            if (other != member && id.equalsIgnoreCase(other.getMemberId())) {
-                throw new ValidationException("Member ID \"" + id + "\" already belongs to " + other.getName() + ".");
-            }
-        }
+        checkMemberIdFree(id, member);
         if (joinDate == null) {
             throw new ValidationException("The new Join Date is required.");
         }

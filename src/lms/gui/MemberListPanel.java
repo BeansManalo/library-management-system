@@ -42,7 +42,63 @@ public class MemberListPanel extends JPanel {
      * who have books out are listed. See MainFrame.showMemberList() /
      * showMemberManage() / showBorrowMemberSelect() / showReturnMemberSelect().
      */
-    public enum Mode { LIST, MANAGE, PICK, RETURN }
+    public enum Mode {
+        LIST("LIST OF MEMBERS", "VIEW") {
+            @Override
+            void open(MainFrame frame, Member member) {
+                frame.showMemberDetail(member);
+            }
+        },
+        MANAGE("ADD / EDIT MEMBERS", "EDIT") {
+            @Override
+            void open(MainFrame frame, Member member) {
+                frame.showMemberForm(member);
+            }
+
+            @Override
+            boolean managing() {
+                return true;
+            }
+        },
+        PICK("SELECT MEMBER", "SELECT") {
+            @Override
+            void open(MainFrame frame, Member member) {
+                frame.showBorrowBook(member);
+            }
+        },
+        RETURN("SELECT MEMBER", "SELECT") {
+            @Override
+            void open(MainFrame frame, Member member) {
+                frame.showReturnBook(member);
+            }
+
+            @Override
+            boolean accepts(Member member) {
+                return member.getBooksBorrowed() > 0;
+            }
+        };
+
+        private final String title;
+        private final String actionLabel;
+
+        Mode(String title, String actionLabel) {
+            this.title = title;
+            this.actionLabel = actionLabel;
+        }
+
+        /** What double-clicking a row (or the VIEW/EDIT/SELECT button) does with that member. */
+        abstract void open(MainFrame frame, Member member);
+
+        /** True for the role that offers Add New, Delete and Renew. */
+        boolean managing() {
+            return false;
+        }
+
+        /** True if this role lists the given member at all. */
+        boolean accepts(Member member) {
+            return true;
+        }
+    }
 
     private Mode mode = Mode.LIST;
 
@@ -215,18 +271,17 @@ public class MemberListPanel extends JPanel {
     /** Switches which of the three roles (see {@link Mode}) this screen plays. */
     public void setMode(Mode mode) {
         this.mode = mode;
-        boolean choosing = mode == Mode.PICK || mode == Mode.RETURN;
-        banner.setText(mode == Mode.MANAGE ? "ADD / EDIT MEMBERS" : choosing ? "SELECT MEMBER" : "LIST OF MEMBERS");
-        btnView.setText(mode == Mode.MANAGE ? "EDIT" : choosing ? "SELECT" : "VIEW");
-        btnAddNew.setVisible(mode == Mode.MANAGE);
-        btnDelete.setVisible(mode == Mode.MANAGE);
+        banner.setText(mode.title);
+        btnView.setText(mode.actionLabel);
+        btnAddNew.setVisible(mode.managing());
+        btnDelete.setVisible(mode.managing());
         updateRenewButton();
     }
 
     /** RENEW is offered only in the management role, and only for a selected member whose membership has expired. */
     private void updateRenewButton() {
         Member selected = memberList.getSelectedValue();
-        btnRenew.setVisible(mode == Mode.MANAGE && selected != null && selected.isExpired());
+        btnRenew.setVisible(mode.managing() && selected != null && selected.isExpired());
     }
 
     /**
@@ -240,8 +295,7 @@ public class MemberListPanel extends JPanel {
 
         displayedMembers = new ArrayList<>();
         for (Member member : mainFrame.getLibrary().getMembers()) {
-            boolean hasBooksOut = mode != Mode.RETURN || member.getBooksBorrowed() > 0;
-            if (hasBooksOut && (query.isEmpty() || matches(member, query))) {
+            if (mode.accepts(member) && (query.isEmpty() || matches(member, query))) {
                 displayedMembers.add(member);
             }
         }
@@ -256,12 +310,7 @@ public class MemberListPanel extends JPanel {
 
     /** Double-click target: depends on the current role (see {@link Mode}). */
     private void openMember(Member member) {
-        switch (mode) {
-            case MANAGE -> mainFrame.showMemberForm(member);
-            case PICK -> mainFrame.showBorrowBook(member);
-            case RETURN -> mainFrame.showReturnBook(member);
-            default -> mainFrame.showMemberDetail(member);
-        }
+        mode.open(mainFrame, member);
     }
 
     /** True if any of the member's fields contain the search text. */

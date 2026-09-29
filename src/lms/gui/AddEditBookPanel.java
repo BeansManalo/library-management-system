@@ -175,6 +175,7 @@ public class AddEditBookPanel extends JPanel {
             validateRequired(txtIsbn.getText(), txtTitle.getText(), txtAuthor.getText(),
                 txtGenre.getText(), txtPublisher.getText(), txtPublicationDate.getText());
             totalCopies = parseNonNegative(txtTotalCopies.getText(), "Total Copies");
+            mainFrame.getLibrary().checkIsbnFree(txtIsbn.getText(), editingBook);
         } catch (ValidationException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Missing Information", JOptionPane.WARNING_MESSAGE);
             return;
