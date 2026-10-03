@@ -44,11 +44,11 @@ public class AddEditBookPanel extends JPanel {
      */
     public AddEditBookPanel() {
         setPreferredSize(MainFrame.NHD_SIZE);
-        setBackground(Theme.APP_BG);
+        setOpaque(false);
         setLayout(layout);
 
-        lblAddAndEditBooks = Theme.banner("ADD BOOK");
-        place(lblAddAndEditBooks, 0, 0, 640, 30);
+        lblAddAndEditBooks = Theme.title("ADD BOOK");
+        place(lblAddAndEditBooks, 20, 7, 600, 24);
         add(lblAddAndEditBooks);
 
         // Left column: what the book is. ISBN anchors it (there's no
@@ -80,7 +80,7 @@ public class AddEditBookPanel extends JPanel {
         add(btnSave);
 
         PillButton btnCancel = new PillButton("CANCEL", Theme.TEXT_MUTED,
-            Theme.TEXT_MUTED.brighter(), Theme.TEXT_PRIMARY);
+            Theme.TEXT_MUTED.brighter(), Theme.CANCEL_PRESSED);
         place(btnCancel, 325, 260, 100, 32);
         // Nothing has been written to editingBook at this point (see
         // save() below), so just navigating away is enough to discard
@@ -106,9 +106,7 @@ public class AddEditBookPanel extends JPanel {
 
         JTextField text = new JTextField();
         text.setFont(Theme.FONT_FIELD);
-        text.setBorder(new javax.swing.border.CompoundBorder(
-            new javax.swing.border.LineBorder(Theme.DIVIDER, 1),
-            new javax.swing.border.EmptyBorder(2, 6, 2, 6)));
+        text.setBorder(Theme.fieldBorder());
         place(text, x, y + 18, FIELD_WIDTH, 24);
         add(text);
         return text;

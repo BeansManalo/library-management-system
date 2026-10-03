@@ -1,7 +1,6 @@
 package lms.gui;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.GridLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -38,7 +37,7 @@ public class BookCardPanel extends RowCardPanel<Book> {
     private final JLabel availableValue = new JLabel();
 
     public BookCardPanel() {
-        super(RowIcons.book(30, Color.BLACK));
+        super(RowIcons.book(30, Theme.INK));
         assemble(CardListPanel.statColumn("Currently Owned", ownedValue, "Available", availableValue), buildBottomRow());
     }
 

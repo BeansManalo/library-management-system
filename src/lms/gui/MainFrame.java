@@ -3,9 +3,13 @@ package lms.gui;
 import java.awt.CardLayout;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
 import java.awt.Insets;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
@@ -18,7 +22,10 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.prefs.BackingStoreException;
+import java.util.prefs.Preferences;
 import javax.swing.AbstractAction;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -38,6 +45,9 @@ public class MainFrame extends JFrame {
 
     /** Reference nHD (640x360) size every screen's layout is designed against. */
     public static final Dimension NHD_SIZE = new Dimension(640, 360);
+
+    /** The white page every screen is drawn on, inside NHD_SIZE. */
+    private static final Rectangle PAGE = new Rectangle(6, 4, 628, 350);
 
     public static final String CARD_DASHBOARD = "DASHBOARD";
     public static final String CARD_BOOK_LIST = "BOOK_LIST";
@@ -62,6 +72,10 @@ public class MainFrame extends JFrame {
     // title bar and borders -- plus full screen.
     private static final double[] SCALES = {1, 1.5, 2, 2.5, 3};
     private static final int CHROME = 48;
+
+    // Settings are kept by the OS per user (the registry on Windows), so they outlive the program:
+    // "dark" (boolean) and "windowWidth" (int; 0 = full screen).
+    private static final Preferences PREFS = Preferences.userNodeForPackage(MainFrame.class);
 
     private JPanel contentPane;
     private CardLayout cardLayout;
@@ -91,6 +105,8 @@ public class MainFrame extends JFrame {
      * Create the frame.
      */
     public MainFrame() {
+        Theme.setDark(PREFS.getBoolean("dark", false));
+        Theme.install(); // before any component exists
         // The X button asks before closing -- see confirmExit().
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
@@ -99,7 +115,7 @@ public class MainFrame extends JFrame {
                 confirmExit();
             }
         });
-        setTitle("Library Management System");
+        setTitle("LeMon.S v0.1");
         setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
         // The screens are always laid out at NHD_SIZE; ScaledLayeredPane paints
         // that scaled up to fit the window (see its class comment). The window
@@ -114,10 +130,60 @@ public class MainFrame extends JFrame {
             public void setBounds(int x, int y, int w, int h) {
                 super.setBounds(0, 0, NHD_SIZE.width, NHD_SIZE.height);
             }
+
+            // Every screen is see-through and sits on one white, softly shadowed page
+            // laid on the grey-blue desk -- so they all share the same frame.
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                for (int i = 4; i >= 1; i--) {
+                    g2.setColor(new Color(0x0F, 0x1F, 0x33, 9));
+                    g2.fillRoundRect(PAGE.x - i, PAGE.y - i + 2, PAGE.width + 2 * i, PAGE.height + 2 * i, 14 + 2 * i, 14 + 2 * i);
+                }
+                g2.setColor(Theme.CARD_BG);
+                g2.fillRoundRect(PAGE.x, PAGE.y, PAGE.width, PAGE.height, 14, 14);
+                g2.dispose();
+            }
         };
         contentPane.setBackground(Theme.APP_BG);
         setContentPane(contentPane);
 
+        buildScreens();
+
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_D,
+            InputEvent.CTRL_DOWN_MASK | InputEvent.ALT_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK), "devMode");
+        getRootPane().getActionMap().put("devMode", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                openDevMode();
+            }
+        });
+
+        getAccessibleContext().setAccessibleDescription("");
+        pack();
+        int width = PREFS.getInt("windowWidth", NHD_SIZE.width);
+        Dimension savedSize = new Dimension(width, width * NHD_SIZE.height / NHD_SIZE.width);
+        if (width == 0) {
+            setWindowSize(null);
+        } else if (width != NHD_SIZE.width && fits(savedSize)) {
+            setWindowSize(savedSize);
+        }
+
+        try {
+            Library saved = Storage.load();
+            if (saved != null) {
+                library.replaceWith(saved);
+            }
+        } catch (ValidationException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Load Failed", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /** Makes every screen (again, on a mode change): each copies the Theme colors as it is built. */
+    private void buildScreens() {
+        contentPane.removeAll();
         dashboardPanel = new DashboardPanel();
         dashboardPanel.setMainFrame(this);
         contentPane.add(dashboardPanel, CARD_DASHBOARD);
@@ -171,27 +237,6 @@ public class MainFrame extends JFrame {
         contentPane.add(deleteMemberPanel, CARD_DELETE_MEMBER);
 
         cardLayout.show(contentPane, CARD_DASHBOARD);
-
-        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_D,
-            InputEvent.CTRL_DOWN_MASK | InputEvent.ALT_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK), "devMode");
-        getRootPane().getActionMap().put("devMode", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                openDevMode();
-            }
-        });
-
-        getAccessibleContext().setAccessibleDescription("");
-        pack();
-
-        try {
-            Library saved = Storage.load();
-            if (saved != null) {
-                library.replaceWith(saved);
-            }
-        } catch (ValidationException e) {
-            JOptionPane.showMessageDialog(this, e.getMessage(), "Load Failed", JOptionPane.ERROR_MESSAGE);
-        }
     }
 
     /**
@@ -224,40 +269,77 @@ public class MainFrame extends JFrame {
             Library.setToday(null);
         }
         // A fake date must never go unnoticed while testing.
-        setTitle("Library Management System  [DEV MODE \u2022 today is " + Member.DATE_FORMAT.format(Library.today()) + "]");
+        setTitle("LeMon.S v0.1  [DEV MODE \u2022 today is " + Member.DATE_FORMAT.format(Library.today()) + "]");
     }
 
     /**
-     * Hamburger menu > Settings. The one setting for now is the window size: the
-     * normal size, larger ones of the same shape that fit this screen, or full screen.
+     * Hamburger menu > Settings: the window size (the normal size, larger ones of the same shape
+     * that fit this screen, or full screen) and light or dark mode. Whatever is changed is saved,
+     * so the program starts that way next time.
      */
     public void openSettings() {
-        GraphicsConfiguration gc = getGraphicsConfiguration();
-        Rectangle screen = gc.getBounds();
-        Insets bars = Toolkit.getDefaultToolkit().getScreenInsets(gc); // taskbar and the like
-        int maxWidth = screen.width - bars.left - bars.right - CHROME;
-        int maxHeight = screen.height - bars.top - bars.bottom - CHROME;
         List<Dimension> sizes = new ArrayList<>();
         List<String> labels = new ArrayList<>();
         for (double scale : SCALES) {
             Dimension size = new Dimension((int) (NHD_SIZE.width * scale), (int) (NHD_SIZE.height * scale));
-            if (size.width <= maxWidth && size.height <= maxHeight) {
+            if (fits(size)) {
                 sizes.add(size);
                 labels.add(size.width + " \u00d7 " + size.height);
             }
         }
         labels.add("Full Screen");
         String current = isUndecorated() ? "Full Screen" : getRootPane().getWidth() + " \u00d7 " + getRootPane().getHeight();
-        int pick = labels.indexOf(JOptionPane.showInputDialog(this, "Resize window:", "Settings",
-            JOptionPane.PLAIN_MESSAGE, null, labels.toArray(), current));
-        if (pick >= 0) {
-            setWindowSize(pick < sizes.size() ? sizes.get(pick) : null);
+        JComboBox<String> sizeBox = new JComboBox<>(labels.toArray(new String[0]));
+        sizeBox.setSelectedItem(current);
+        JComboBox<String> modeBox = new JComboBox<>(new String[] {"Light", "Dark"});
+        modeBox.setSelectedIndex(Theme.isDark() ? 1 : 0);
+        Theme.handCursor(sizeBox);
+        Theme.handCursor(modeBox);
+        if (JOptionPane.showConfirmDialog(this, new Object[] {"Resize window:", sizeBox, "Mode:", modeBox},
+                "Settings", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) {
+            return;
         }
+        boolean dark = modeBox.getSelectedIndex() == 1;
+        if (dark != Theme.isDark()) {
+            setDark(dark);
+            PREFS.putBoolean("dark", dark);
+        }
+        int pick = sizeBox.getSelectedIndex();
+        if (!labels.get(pick).equals(current)) {
+            Dimension size = pick < sizes.size() ? sizes.get(pick) : null;
+            setWindowSize(size);
+            PREFS.putInt("windowWidth", size == null ? 0 : size.width);
+        }
+        try {
+            PREFS.flush();
+        } catch (BackingStoreException e) {
+            // the settings just won't outlive this run
+        }
+    }
+
+    /** Whether a window with this usable area fits this screen, leaving room for the title bar and borders. */
+    private boolean fits(Dimension size) {
+        GraphicsConfiguration gc = getGraphicsConfiguration();
+        Rectangle screen = gc.getBounds();
+        Insets bars = Toolkit.getDefaultToolkit().getScreenInsets(gc); // taskbar and the like
+        return size.width <= screen.width - bars.left - bars.right - CHROME
+            && size.height <= screen.height - bars.top - bars.bottom - CHROME;
+    }
+
+    /** Switches the whole program between light and dark, rebuilding the screens in the new colors. */
+    private void setDark(boolean dark) {
+        Theme.setDark(dark);
+        Theme.install();
+        contentPane.setBackground(Theme.APP_BG);
+        buildScreens();
+        contentPane.revalidate();
+        contentPane.repaint();
     }
 
     /** Puts the window at {@code size} (its usable area, 16:9), centered on its screen -- or full screen if null. */
     private void setWindowSize(Dimension size) {
         Rectangle screen = getGraphicsConfiguration().getBounds();
+        boolean shown = isVisible(); // at launch the window isn't up yet, and Main shows it
         dispose(); // a frame can only gain or lose its title bar while it has no window
         setUndecorated(size == null);
         if (size == null) {
@@ -267,7 +349,7 @@ public class MainFrame extends JFrame {
             pack();
             setLocation(screen.x + (screen.width - getWidth()) / 2, screen.y + (screen.height - getHeight()) / 2);
         }
-        setVisible(true);
+        setVisible(shown);
     }
 
     /** Hamburger menu > Exit, and the window's X button: asks first, then closes the program. */

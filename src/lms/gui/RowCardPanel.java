@@ -128,7 +128,7 @@ abstract class RowCardPanel<T> extends JPanel implements ListCellRenderer<T> {
         g2.setColor(selected ? Theme.CARD_SELECTED : Theme.CARD_BG);
         g2.fillRect(0, 0, getWidth(), getHeight());
         if (selected) {
-            g2.setColor(Theme.NAVY);
+            g2.setColor(Theme.HEADING);
             g2.fillRect(0, 0, 3, getHeight());
         }
         g2.setColor(Theme.DIVIDER);

@@ -74,12 +74,12 @@ public class ReturnConfirmPanel extends JPanel {
 
     public ReturnConfirmPanel() {
         setPreferredSize(MainFrame.NHD_SIZE);
-        setBackground(Theme.APP_BG);
+        setOpaque(false);
         setLayout(layout);
 
-        JLabel banner = Theme.banner("CONFIRM RETURN");
-        place(banner, 0, 0, 640, 30);
-        add(banner);
+        JLabel heading = Theme.title("CONFIRM RETURN");
+        place(heading, 20, 7, 600, 24);
+        add(heading);
 
         lblName = new FitLabel().shrink(4);
         lblName.setFont(new Font("Arial", Font.BOLD, 14));

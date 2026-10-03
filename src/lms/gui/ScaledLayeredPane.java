@@ -1,10 +1,13 @@
 package lms.gui;
 
 import java.awt.AWTEvent;
+import java.awt.Component;
 import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.event.MouseEvent;
@@ -14,7 +17,10 @@ import javax.swing.JFrame;
 import javax.swing.JLayeredPane;
 import javax.swing.JRootPane;
 import javax.swing.JViewport;
+import javax.swing.Popup;
+import javax.swing.PopupFactory;
 import javax.swing.RepaintManager;
+import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
 /**
@@ -48,6 +54,22 @@ final class ScaledLayeredPane extends JLayeredPane {
                 } else {
                     super.addDirtyRegion(c, x, y, w, h);
                 }
+            }
+        });
+
+        // Popups and tooltips are placed in that same 640x360 space, so one that runs past its
+        // edge would be cut off by the (scaled) window edge -- and Swing, which compares it against
+        // the real window size, wouldn't think to move it. Keep every one of them inside the design area.
+        PopupFactory.setSharedInstance(new PopupFactory() {
+            @Override
+            public Popup getPopup(Component owner, Component contents, int x, int y) {
+                if (owner != null && frame.isShowing() && SwingUtilities.getRoot(owner) == frame) {
+                    Point origin = frame.getRootPane().getLocationOnScreen();
+                    Dimension size = contents.getPreferredSize();
+                    x = Math.max(origin.x, Math.min(x, origin.x + W - size.width));
+                    y = Math.max(origin.y, Math.min(y, origin.y + H - size.height));
+                }
+                return super.getPopup(owner, contents, x, y);
             }
         });
 

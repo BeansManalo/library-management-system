@@ -1,7 +1,6 @@
 package lms.gui;
 
 import java.awt.Color;
-import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -37,7 +36,7 @@ public class PillButton extends JButton {
         setContentAreaFilled(false);
         setBorderPainted(false);
         setOpaque(false);
-        setCursor(new Cursor(Cursor.HAND_CURSOR));
+        Theme.handCursor(this);
     }
 
     public void setIcon(Icon icon, int gap) {

@@ -12,7 +12,6 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
-import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -23,7 +22,7 @@ public class BookListPanel extends JPanel {
 
     private MainFrame mainFrame;
     private final ProportionalLayout layout = new ProportionalLayout();
-    private JLabel banner;
+    private JLabel heading;
     private JTextField txtSearch;
     private JList<Book> bookList;
     private PillButton btnView;
@@ -50,7 +49,7 @@ public class BookListPanel extends JPanel {
      */
     public BookListPanel() {
         setPreferredSize(MainFrame.NHD_SIZE);
-        setBackground(Theme.APP_BG);
+        setOpaque(false);
         setLayout(layout);
 
         // Catches clicks on the blank margins around the table and
@@ -65,9 +64,9 @@ public class BookListPanel extends JPanel {
             }
         });
 
-        banner = Theme.banner("LIST OF BOOKS");
-        place(banner, 0, 0, 640, 30);
-        add(banner);
+        heading = Theme.title("LIST OF BOOKS");
+        place(heading, 20, 7, 600, 24);
+        add(heading);
 
         JLabel lblSearch = new JLabel("Search:");
         lblSearch.setFont(Theme.FONT_LABEL);
@@ -76,8 +75,7 @@ public class BookListPanel extends JPanel {
 
         txtSearch = new JTextField();
         txtSearch.setFont(Theme.FONT_FIELD);
-        txtSearch.setBorder(new javax.swing.border.CompoundBorder(
-            new LineBorder(Theme.DIVIDER, 1), new EmptyBorder(2, 6, 2, 6)));
+        txtSearch.setBorder(Theme.fieldBorder());
         place(txtSearch, 85, 40, 220, 24);
         add(txtSearch);
         // Live filter: re-run the search on every keystroke instead of
@@ -132,7 +130,7 @@ public class BookListPanel extends JPanel {
         });
 
         JScrollPane scrollPane = new JScrollPane(bookList);
-        scrollPane.setBorder(new LineBorder(Theme.DIVIDER, 1));
+        scrollPane.setBorder(new LineBorder(Theme.FIELD_BORDER, 1));
         scrollPane.getVerticalScrollBar().setUnitIncrement(24);
         scrollPane.getViewport().setBackground(Theme.CARD_BG);
         place(scrollPane, 20, 72, 430, 212);
@@ -197,7 +195,7 @@ public class BookListPanel extends JPanel {
      */
     public void setManageMode(boolean manageMode) {
         this.manageMode = manageMode;
-        banner.setText(manageMode ? "ADD / EDIT BOOKS" : "LIST OF BOOKS");
+        heading.setText(manageMode ? "ADD / EDIT BOOKS" : "LIST OF BOOKS");
         btnView.setText(manageMode ? "EDIT" : "VIEW");
         btnAddNew.setVisible(manageMode);
         btnDelete.setVisible(manageMode);

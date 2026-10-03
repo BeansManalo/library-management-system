@@ -119,12 +119,12 @@ public class ReturnBookPanel extends JPanel {
 
     public ReturnBookPanel() {
         setPreferredSize(MainFrame.NHD_SIZE);
-        setBackground(Theme.APP_BG);
+        setOpaque(false);
         setLayout(layout);
 
-        JLabel banner = Theme.banner("RETURN BOOK");
-        place(banner, 0, 0, 640, 30);
-        add(banner);
+        JLabel heading = Theme.title("RETURN BOOK");
+        place(heading, 20, 7, 600, 24);
+        add(heading);
 
         lblMember = new FitLabel().shrink(3);
         lblMember.setFont(Theme.FONT_CARD_TITLE);
@@ -152,7 +152,7 @@ public class ReturnBookPanel extends JPanel {
         place(lblBasket, 332, 64, 200, 22);
         add(lblBasket);
 
-        loanTable = Theme.table(loanModel, 150, 40, 110);
+        loanTable = Theme.table(loanModel, 125, 36, 139);
         loanTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 syncQuantityLimit();
@@ -181,6 +181,7 @@ public class ReturnBookPanel extends JPanel {
 
         JSpinner spnQuantity = new JSpinner(qtyModel);
         spnQuantity.setFont(Theme.FONT_FIELD);
+        Theme.handCursor(spnQuantity);
         place(spnQuantity, 50, 258, 54, 22);
         add(spnQuantity);
 

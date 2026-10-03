@@ -12,7 +12,6 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
-import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -23,7 +22,7 @@ public class MemberListPanel extends JPanel {
 
     private MainFrame mainFrame;
     private final ProportionalLayout layout = new ProportionalLayout();
-    private JLabel banner;
+    private JLabel heading;
     private JTextField txtSearch;
     private JList<Member> memberList;
     private PillButton btnView;
@@ -112,7 +111,7 @@ public class MemberListPanel extends JPanel {
      */
     public MemberListPanel() {
         setPreferredSize(MainFrame.NHD_SIZE);
-        setBackground(Theme.APP_BG);
+        setOpaque(false);
         setLayout(layout);
 
         // Catches clicks on the blank margins around the table and
@@ -127,9 +126,9 @@ public class MemberListPanel extends JPanel {
             }
         });
 
-        banner = Theme.banner("LIST OF MEMBERS");
-        place(banner, 0, 0, 640, 30);
-        add(banner);
+        heading = Theme.title("LIST OF MEMBERS");
+        place(heading, 20, 7, 600, 24);
+        add(heading);
 
         JLabel lblSearch = new JLabel("Search:");
         lblSearch.setFont(Theme.FONT_LABEL);
@@ -138,8 +137,7 @@ public class MemberListPanel extends JPanel {
 
         txtSearch = new JTextField();
         txtSearch.setFont(Theme.FONT_FIELD);
-        txtSearch.setBorder(new javax.swing.border.CompoundBorder(
-            new LineBorder(Theme.DIVIDER, 1), new EmptyBorder(2, 6, 2, 6)));
+        txtSearch.setBorder(Theme.fieldBorder());
         place(txtSearch, 85, 40, 220, 24);
         add(txtSearch);
         // Live filter: re-run the search on every keystroke instead of
@@ -202,7 +200,7 @@ public class MemberListPanel extends JPanel {
         });
 
         JScrollPane scrollPane = new JScrollPane(memberList);
-        scrollPane.setBorder(new LineBorder(Theme.DIVIDER, 1));
+        scrollPane.setBorder(new LineBorder(Theme.FIELD_BORDER, 1));
         scrollPane.getVerticalScrollBar().setUnitIncrement(24);
         scrollPane.getViewport().setBackground(Theme.CARD_BG);
         place(scrollPane, 20, 72, 430, 212);
@@ -271,7 +269,7 @@ public class MemberListPanel extends JPanel {
     /** Switches which of the three roles (see {@link Mode}) this screen plays. */
     public void setMode(Mode mode) {
         this.mode = mode;
-        banner.setText(mode.title);
+        heading.setText(mode.title);
         btnView.setText(mode.actionLabel);
         btnAddNew.setVisible(mode.managing());
         btnDelete.setVisible(mode.managing());

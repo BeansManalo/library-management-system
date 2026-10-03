@@ -1,7 +1,6 @@
 package lms.gui;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.GridLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -31,7 +30,7 @@ public class MemberCardPanel extends RowCardPanel<Member> {
     private final JLabel endValue = new JLabel();
 
     public MemberCardPanel() {
-        super(RowIcons.person(30, Color.BLACK));
+        super(RowIcons.person(30, Theme.INK));
         assemble(CardListPanel.statColumn("Join Date", joinValue, "End Date", endValue), buildBottomRow());
     }
 
@@ -72,10 +71,10 @@ public class MemberCardPanel extends RowCardPanel<Member> {
         borrowedLabel.setText("Books Borrowed: " + member.getBooksBorrowed());
         int overdue = member.getOverdueBooks();
         overdueLabel.setText("Overdue Books: " + overdue);
-        overdueLabel.setForeground(overdue > 0 ? Theme.ALERT : Theme.TEXT_MUTED);
+        overdueLabel.setForeground(overdue > 0 ? Theme.ALERT_TEXT : Theme.TEXT_MUTED);
         joinValue.setText(text(member.getJoinDate()));
         endValue.setText(text(member.getEndDate()));
         // An expired membership shows its end date in red (this one label is reused for every row).
-        endValue.setForeground(member.isExpired() ? Theme.ALERT : Theme.TEXT_PRIMARY);
+        endValue.setForeground(member.isExpired() ? Theme.ALERT_TEXT : Theme.TEXT_PRIMARY);
     }
 }

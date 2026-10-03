@@ -70,12 +70,12 @@ public class BorrowConfirmPanel extends JPanel {
 
     public BorrowConfirmPanel() {
         setPreferredSize(MainFrame.NHD_SIZE);
-        setBackground(Theme.APP_BG);
+        setOpaque(false);
         setLayout(layout);
 
-        JLabel banner = Theme.banner("CONFIRM BORROWING");
-        place(banner, 0, 0, 640, 30);
-        add(banner);
+        JLabel heading = Theme.title("CONFIRM BORROWING");
+        place(heading, 20, 7, 600, 24);
+        add(heading);
 
         lblName = new FitLabel().shrink(4);
         lblName.setFont(new Font("Arial", Font.BOLD, 14));

@@ -2,7 +2,7 @@ package lms.gui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Cursor;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.Insets;
@@ -20,7 +20,6 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
-import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import lms.core.Library;
@@ -69,7 +68,7 @@ public class DatePickerField extends JPanel {
 
         field = new JTextField();
         field.setFont(Theme.FONT_FIELD);
-        field.setBorder(new CompoundBorder(new LineBorder(Theme.DIVIDER, 1), new EmptyBorder(2, 6, 2, 6)));
+        field.setBorder(Theme.fieldBorder());
         field.setEditable(false);
         // Not just non-editable but non-focusable, so clicking it can
         // never show a text caret -- the popup is the only way in.
@@ -77,16 +76,16 @@ public class DatePickerField extends JPanel {
         // A non-editable JTextField otherwise falls back to the L&F's
         // grayed-out "inactive" background; keep it looking like a
         // normal white field instead.
-        field.setBackground(Color.WHITE);
+        field.setBackground(Theme.CARD_BG);
         add(field, BorderLayout.CENTER);
 
         JButton calendarButton = new JButton(RowIcons.calendar(14, Theme.TEXT_PRIMARY));
         calendarButton.setToolTipText("Pick a date");
         calendarButton.setFocusPainted(false);
-        calendarButton.setMargin(new Insets(0, 0, 0, 0));
-        calendarButton.setBackground(Theme.CARD_BG);
-        calendarButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        calendarButton.setPreferredSize(new Dimension(22, 10));
+        calendarButton.setContentAreaFilled(false);
+        calendarButton.setBorder(Theme.outline());
+        Theme.handCursor(calendarButton);
+        calendarButton.setPreferredSize(new Dimension(24, 10));
         calendarButton.addActionListener(e -> showPopup(calendarButton));
         add(calendarButton, BorderLayout.EAST);
     }
@@ -116,7 +115,9 @@ public class DatePickerField extends JPanel {
 
     public void setEnabled(boolean enabled) {
         super.setEnabled(enabled);
-        field.setEnabled(enabled);
+        for (Component part : getComponents()) { // the text box and the calendar button
+            part.setEnabled(enabled);
+        }
     }
 
     /** The field's current text parsed as a date, or null if it isn't one. */
@@ -137,10 +138,17 @@ public class DatePickerField extends JPanel {
         YearMonth month = current != null ? YearMonth.from(current) : YearMonth.from(Library.today());
 
         JPopupMenu popup = new JPopupMenu();
-        popup.setBorder(new LineBorder(Theme.DIVIDER, 1));
+        popup.setBorder(new LineBorder(Theme.FIELD_BORDER, 1));
         popup.setLayout(new BorderLayout());
         popup.add(buildDayView(month, current, popup), BorderLayout.CENTER);
-        popup.show(anchor, anchor.getWidth() - 210, anchor.getHeight());
+
+        // Right-aligned under the field -- or above it when the window has no room below
+        // (the Borrow/Return date fields sit near the bottom of the screen).
+        Dimension size = popup.getPreferredSize();
+        javax.swing.JRootPane root = anchor.getRootPane();
+        int bottom = javax.swing.SwingUtilities.convertPoint(anchor, 0, anchor.getHeight(), root.getContentPane()).y;
+        boolean fitsBelow = bottom + size.height <= root.getContentPane().getHeight();
+        popup.show(anchor, anchor.getWidth() - size.width, fitsBelow ? anchor.getHeight() : -size.height);
     }
 
     // ---- DAY: the usual one-month grid. Its heading drills UP to MONTH. ----
@@ -181,7 +189,7 @@ public class DatePickerField extends JPanel {
             dayButton.setFont(Theme.FONT_LABEL);
             dayButton.setMargin(new Insets(2, 2, 2, 2));
             dayButton.setFocusPainted(false);
-            dayButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            Theme.handCursor(dayButton);
             boolean isSelected = date.equals(selected);
             dayButton.setBackground(isSelected ? Theme.NAVY : Theme.CARD_BG);
             dayButton.setForeground(disabled ? Theme.TEXT_MUTED : (isSelected ? Color.WHITE : Theme.TEXT_PRIMARY));
@@ -240,8 +248,8 @@ public class DatePickerField extends JPanel {
 
         int pageEnd = pageStart + YEAR_PAGE_SIZE - 1;
         JLabel heading = new JLabel(pageStart + "\u2013" + pageEnd, SwingConstants.CENTER);
-        heading.setFont(Theme.FONT_CARD_TITLE);
-        heading.setForeground(Theme.TEXT_PRIMARY);
+        heading.setFont(Theme.display(12));
+        heading.setForeground(Theme.HEADING);
 
         JButton prev = navButton(RowIcons.triangle(9, false, Theme.TEXT_PRIMARY));
         JButton next = navButton(RowIcons.triangle(9, true, Theme.TEXT_PRIMARY));
@@ -275,6 +283,7 @@ public class DatePickerField extends JPanel {
         JPanel root = new JPanel(new BorderLayout(0, 4));
         root.setBackground(Theme.CARD_BG);
         root.setBorder(new EmptyBorder(6, 6, 6, 6));
+        root.setPreferredSize(new Dimension(214, 168)); // fits a six-week month
         return root;
     }
 
@@ -290,13 +299,13 @@ public class DatePickerField extends JPanel {
     /** Looks like the plain title label it replaces, but drills up a level on click. */
     private JButton headingButton(String text) {
         JButton b = new JButton(text);
-        b.setFont(Theme.FONT_CARD_TITLE);
-        b.setForeground(Theme.TEXT_PRIMARY);
+        b.setFont(Theme.display(12));
+        b.setForeground(Theme.HEADING);
         b.setHorizontalAlignment(SwingConstants.CENTER);
         b.setFocusPainted(false);
-        b.setBorderPainted(false);
+        b.setBorder(new EmptyBorder(0, 0, 0, 0));
         b.setContentAreaFilled(false);
-        b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        Theme.handCursor(b);
         return b;
     }
 
@@ -305,7 +314,7 @@ public class DatePickerField extends JPanel {
         b.setFocusPainted(false);
         b.setBorderPainted(false);
         b.setContentAreaFilled(false);
-        b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        Theme.handCursor(b);
         return b;
     }
 
@@ -315,7 +324,7 @@ public class DatePickerField extends JPanel {
         b.setFont(Theme.FONT_LABEL);
         b.setMargin(new Insets(6, 2, 6, 2));
         b.setFocusPainted(false);
-        b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        Theme.handCursor(b);
         b.setBackground(selected ? Theme.NAVY : Theme.CARD_BG);
         b.setForeground(disabled ? Theme.TEXT_MUTED : (selected ? Color.WHITE : Theme.TEXT_PRIMARY));
         b.setBorder(new LineBorder(isCurrent ? Theme.BLUE_ACCENT : Theme.DIVIDER, 1));

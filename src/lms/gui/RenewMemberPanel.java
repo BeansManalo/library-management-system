@@ -8,9 +8,6 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
-import javax.swing.border.CompoundBorder;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
 import lms.core.Library;
 import lms.core.Member;
 import lms.core.ValidationException;
@@ -47,12 +44,12 @@ public class RenewMemberPanel extends JPanel {
 
     public RenewMemberPanel() {
         setPreferredSize(MainFrame.NHD_SIZE);
-        setBackground(Theme.APP_BG);
+        setOpaque(false);
         setLayout(layout);
 
-        JLabel banner = Theme.banner("RENEW MEMBERSHIP");
-        place(banner, 0, 0, 640, 30);
-        add(banner);
+        JLabel heading = Theme.title("RENEW MEMBERSHIP");
+        place(heading, 20, 7, 600, 24);
+        add(heading);
 
         lblName = new FitLabel().shrink(4);
         lblName.setFont(new Font("Arial", Font.BOLD, 14));
@@ -62,7 +59,7 @@ public class RenewMemberPanel extends JPanel {
 
         lblStatus = new JLabel();
         lblStatus.setFont(Theme.FONT_CARD_SUB_BOLD);
-        lblStatus.setForeground(Theme.ALERT);
+        lblStatus.setForeground(Theme.ALERT_TEXT);
         place(lblStatus, 20, 62, 600, 16);
         add(lblStatus);
 
@@ -94,7 +91,7 @@ public class RenewMemberPanel extends JPanel {
         add(lblDeleteHint);
 
         PillButton btnCancel = new PillButton("CANCEL", Theme.TEXT_MUTED,
-            Theme.TEXT_MUTED.brighter(), Theme.TEXT_PRIMARY);
+            Theme.TEXT_MUTED.brighter(), Theme.CANCEL_PRESSED);
         place(btnCancel, 95, 300, 110, 28);
         btnCancel.addActionListener(e -> mainFrame.showCard(MainFrame.CARD_MEMBER_LIST));
         add(btnCancel);
@@ -171,7 +168,7 @@ public class RenewMemberPanel extends JPanel {
         addLabel(labelText, x, y);
         JTextField text = new JTextField();
         text.setFont(Theme.FONT_FIELD);
-        text.setBorder(new CompoundBorder(new LineBorder(Theme.DIVIDER, 1), new EmptyBorder(2, 6, 2, 6)));
+        text.setBorder(Theme.fieldBorder());
         place(text, x, y + 18, FIELD_WIDTH, 24);
         add(text);
         return text;

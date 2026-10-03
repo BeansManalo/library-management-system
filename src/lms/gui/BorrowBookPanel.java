@@ -16,9 +16,6 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
-import javax.swing.border.CompoundBorder;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.AbstractTableModel;
@@ -132,12 +129,12 @@ public class BorrowBookPanel extends JPanel {
 
     public BorrowBookPanel() {
         setPreferredSize(MainFrame.NHD_SIZE);
-        setBackground(Theme.APP_BG);
+        setOpaque(false);
         setLayout(layout);
 
-        JLabel banner = Theme.banner("BORROW BOOK");
-        place(banner, 0, 0, 640, 30);
-        add(banner);
+        JLabel heading = Theme.title("BORROW BOOK");
+        place(heading, 20, 7, 600, 24);
+        add(heading);
 
         lblMember = new FitLabel().shrink(3);
         lblMember.setFont(Theme.FONT_CARD_TITLE);
@@ -161,7 +158,7 @@ public class BorrowBookPanel extends JPanel {
 
         txtSearch = new JTextField();
         txtSearch.setFont(Theme.FONT_FIELD);
-        txtSearch.setBorder(new CompoundBorder(new LineBorder(Theme.DIVIDER, 1), new EmptyBorder(2, 6, 2, 6)));
+        txtSearch.setBorder(Theme.fieldBorder());
         place(txtSearch, 72, 64, 248, 22);
         add(txtSearch);
         txtSearch.getDocument().addDocumentListener(new DocumentListener() {
@@ -216,6 +213,7 @@ public class BorrowBookPanel extends JPanel {
 
         JSpinner spnQuantity = new JSpinner(qtyModel);
         spnQuantity.setFont(Theme.FONT_FIELD);
+        Theme.handCursor(spnQuantity);
         place(spnQuantity, 50, 258, 54, 22);
         add(spnQuantity);
 

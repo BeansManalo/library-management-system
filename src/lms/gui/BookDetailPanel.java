@@ -27,7 +27,7 @@ public class BookDetailPanel extends JPanel {
     private MainFrame mainFrame;
     private final ProportionalLayout layout = new ProportionalLayout();
 
-    private JLabel banner;
+    private JLabel heading;
     private static final int TITLE_W = 420;
 
     private FitLabel titleLabel;
@@ -44,14 +44,14 @@ public class BookDetailPanel extends JPanel {
 
     public BookDetailPanel() {
         setPreferredSize(MainFrame.NHD_SIZE);
-        setBackground(Theme.APP_BG);
+        setOpaque(false);
         setLayout(layout);
 
-        banner = Theme.banner("BOOK DETAILS");
-        place(banner, 0, 0, 640, 30);
-        add(banner);
+        heading = Theme.title("BOOK DETAILS");
+        place(heading, 20, 7, 600, 24);
+        add(heading);
 
-        JLabel icon = new JLabel(RowIcons.book(56, Color.BLACK));
+        JLabel icon = new JLabel(RowIcons.book(56, Theme.INK));
         place(icon, 30, 44, 56, 56);
         add(icon);
 

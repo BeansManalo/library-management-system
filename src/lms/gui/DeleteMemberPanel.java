@@ -100,12 +100,12 @@ public class DeleteMemberPanel extends JPanel {
 
     public DeleteMemberPanel() {
         setPreferredSize(MainFrame.NHD_SIZE);
-        setBackground(Theme.APP_BG);
+        setOpaque(false);
         setLayout(layout);
 
-        JLabel banner = Theme.banner("DELETE MEMBER");
-        place(banner, 0, 0, 640, 30);
-        add(banner);
+        JLabel heading = Theme.title("DELETE MEMBER");
+        place(heading, 20, 7, 600, 24);
+        add(heading);
 
         lblName = new FitLabel().shrink(4);
         lblName.setFont(new Font("Arial", Font.BOLD, 14));
@@ -115,7 +115,7 @@ public class DeleteMemberPanel extends JPanel {
 
         lblDetails = new JLabel();
         lblDetails.setFont(Theme.FONT_CARD_SUB_BOLD);
-        lblDetails.setForeground(Theme.ALERT);
+        lblDetails.setForeground(Theme.ALERT_TEXT);
         place(lblDetails, 20, 60, 600, 16);
         add(lblDetails);
 
@@ -133,7 +133,7 @@ public class DeleteMemberPanel extends JPanel {
                     boolean focus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(t, value, selected, focus, row, column);
                 Outcome outcome = rows.get(row).outcome;
-                c.setForeground(outcome == Outcome.LOST ? Theme.ALERT
+                c.setForeground(outcome == Outcome.LOST ? Theme.ALERT_TEXT
                     : outcome == Outcome.RETURNED ? Theme.BLUE_ACCENT : Theme.TEXT_MUTED);
                 c.setFont(Theme.FONT_CARD_SUB_BOLD);
                 return c;
@@ -166,7 +166,7 @@ public class DeleteMemberPanel extends JPanel {
         add(lblSummary);
 
         PillButton btnCancel = new PillButton("CANCEL", Theme.TEXT_MUTED,
-            Theme.TEXT_MUTED.brighter(), Theme.TEXT_PRIMARY);
+            Theme.TEXT_MUTED.brighter(), Theme.CANCEL_PRESSED);
         place(btnCancel, 180, 300, 110, 28);
         btnCancel.addActionListener(e -> mainFrame.showCard(MainFrame.CARD_MEMBER_LIST));
         add(btnCancel);

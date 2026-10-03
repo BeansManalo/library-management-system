@@ -107,12 +107,12 @@ public class MemberDetailPanel extends JPanel {
 
     public MemberDetailPanel() {
         setPreferredSize(MainFrame.NHD_SIZE);
-        setBackground(Theme.APP_BG);
+        setOpaque(false);
         setLayout(layout);
 
-        JLabel banner = Theme.banner("MEMBER DETAILS");
-        place(banner, 0, 0, 640, 30);
-        add(banner);
+        JLabel heading = Theme.title("MEMBER DETAILS");
+        place(heading, 20, 7, 600, 24);
+        add(heading);
 
         // The library-card visual is just a backdrop drawn behind the
         // rest of this panel's own components (all sharing this same
@@ -166,7 +166,7 @@ public class MemberDetailPanel extends JPanel {
     /** Name, member ID, date of birth, and contact details. */
     private void buildFrontFace() {
         // The person glyph on a soft circle with an accent ring.
-        JLabel avatar = new JLabel(RowIcons.person(48, Theme.NAVY), SwingConstants.CENTER) {
+        JLabel avatar = new JLabel(RowIcons.person(48, Theme.HEADING), SwingConstants.CENTER) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -381,8 +381,6 @@ public class MemberDetailPanel extends JPanel {
      * borrow date, or the red Overdue Books one), or a single loan.
      */
     private static class RecordsRenderer implements ListCellRenderer<Object> {
-        private static final Color LATE = Theme.ALERT;
-
         private final JLabel dName = new FitLabel().shrink(4);
         private final JLabel dId = new JLabel();
         private final JLabel dContact = new FitLabel();
@@ -412,7 +410,7 @@ public class MemberDetailPanel extends JPanel {
             details.add(dContact);
             details.add(dAddress);
             detailsRow.setBorder(new CompoundBorder(new MatteBorder(0, 0, 1, 0, Theme.DIVIDER), new EmptyBorder(8, 12, 8, 12)));
-            detailsRow.add(new JLabel(RowIcons.person(44, Theme.NAVY)), BorderLayout.WEST);
+            detailsRow.add(new JLabel(RowIcons.person(44, Theme.HEADING)), BorderLayout.WEST);
             detailsRow.add(details, BorderLayout.CENTER);
 
             heading.setFont(Theme.FONT_CARD_SUB_BOLD);
@@ -478,13 +476,13 @@ public class MemberDetailPanel extends JPanel {
                 lStatus.setForeground(switch (status) {
                     case BORROWED -> Theme.BLUE_ACCENT;
                     case RETURNED -> Theme.TEXT_MUTED;
-                    default -> LATE;
+                    default -> Theme.ALERT_TEXT;
                 });
                 return loanRow;
             }
             if (value instanceof Heading h) {
                 heading.setText(h.text());
-                heading.setForeground(h.alert() ? LATE : Theme.TEXT_PRIMARY);
+                heading.setForeground(h.alert() ? Theme.ALERT_TEXT : Theme.TEXT_PRIMARY);
                 return headingRow;
             }
             heading.setText(String.valueOf(value));
@@ -556,7 +554,7 @@ public class MemberDetailPanel extends JPanel {
             int narrow = Math.max(1, getWidth() / Math.max(1, unitsAtNarrow1));
             int totalWidth = Barcode.width(data, narrow);
             int x = Math.max(0, (getWidth() - totalWidth) / 2);
-            Barcode.draw(g2, data, x, 0, narrow, Math.max(10, getHeight() - 14), Color.BLACK);
+            Barcode.draw(g2, data, x, 0, narrow, Math.max(10, getHeight() - 14), Theme.INK);
 
             g2.setFont(Theme.FONT_CARD_MUTED);
             g2.setColor(Theme.TEXT_MUTED);
