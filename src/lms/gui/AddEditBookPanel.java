@@ -169,10 +169,16 @@ public class AddEditBookPanel extends JPanel {
      */
     private void save() {
         int totalCopies;
+        // Copies currently checked out (0 for a brand-new book).
+        int checkedOut = (editingBook == null) ? 0 : editingBook.getTotalCopies() - editingBook.getAvailableCopies();
         try {
             validateRequired(txtIsbn.getText(), txtTitle.getText(), txtAuthor.getText(),
                 txtGenre.getText(), txtPublisher.getText(), txtPublicationDate.getText());
             totalCopies = parseNonNegative(txtTotalCopies.getText(), "Total Copies");
+            if (totalCopies < checkedOut) {
+                throw new ValidationException("Total Copies can't be lower than the " + checkedOut
+                    + " cop" + (checkedOut == 1 ? "y" : "ies") + " currently borrowed.");
+            }
             mainFrame.getLibrary().checkIsbnFree(txtIsbn.getText(), editingBook);
         } catch (ValidationException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Missing Information", JOptionPane.WARNING_MESSAGE);
@@ -181,11 +187,6 @@ public class AddEditBookPanel extends JPanel {
 
         boolean isNew = (editingBook == null);
         Book book = isNew ? new Book() : editingBook;
-
-        // How many copies are currently checked out (0 for a brand-new
-        // book) -- captured before setTotalCopies() below overwrites the
-        // old total, so it can be carried over onto the new total.
-        int checkedOut = book.getTotalCopies() - book.getAvailableCopies();
 
         book.setIsbn(txtIsbn.getText().trim());
         book.setTitle(txtTitle.getText().trim());
@@ -202,8 +203,9 @@ public class AddEditBookPanel extends JPanel {
         // was already checked out carries over onto the new total, so
         // raising Total Copies raises Available Copies to match (the new
         // copies start on the shelf) and lowering it lowers Available
-        // Copies too, never below 0.
-        book.setAvailableCopies(Math.max(0, totalCopies - checkedOut));
+        // Copies too. The total can't drop below what's checked out
+        // (checked in save() above), so this is never negative.
+        book.setAvailableCopies(totalCopies - checkedOut);
 
         if (isNew) {
             mainFrame.getLibrary().getBooks().add(book);
